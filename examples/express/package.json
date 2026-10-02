@@ -1,0 +1,15 @@
+{
+  "name": "@metanoia/example-express",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env src/server.js",
+    "start": "node src/server.js",
+    "smoke": "npm run build --workspace @metanoia/client && npm run build --workspace @metanoia/chatbot && npm run build --workspace @metanoia/widget && node scripts/smoke.js"
+  },
+  "dependencies": {
+    "@metanoia/chatbot": "0.1.0",
+    "express": "^5.1.0",
+    "@metanoia/client": "0.1.0"
+  }
+}
