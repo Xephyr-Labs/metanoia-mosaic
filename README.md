@@ -10,13 +10,17 @@ Bring your own OpenAI-compatible provider. Keep identity, memory, tools, and dat
 
 </div>
 
+```sh
+npm create metanoia-mosaic
+```
+
 ## Capabilities
 
 - **Provider choice:** connect OpenAI-compatible chat APIs, including OpenRouter and DeepInfra. Provider credentials stay on your server.
 - **Personalized context:** inject trusted host profile data, user preferences, relevant memories, and compact conversation summaries within a token budget.
 - **Tools and search:** connect server-side application functions; optionally use OpenRouter web search with citations.
 - **Multimodal by choice:** independently enable image input, voice transcription, and spoken replies.
-- **A configurable assistant UI:** set its name, avatar, greeting, theme, colors, placement, and dimensions. Optional conversation-aware suggestion pills help users continue.
+- **A configurable assistant UI:** set its name, avatar, greeting, theme, colors, placement, and dimensions. Optional suggestion pills, custom labels, locale, and RTL direction adapt it to your product.
 - **App-owned identity and storage:** resolve users through your application; persist conversations in SQLite or PostgreSQL.
 - **Flexible integration:** use the floating web widget, optional React wrapper, typed headless client, or transport-neutral HTTP handler.
 
@@ -28,10 +32,13 @@ Bring your own OpenAI-compatible provider. Keep identity, memory, tools, and dat
 | `@metanoia/widget` | Framework-independent Shadow DOM chat widget |
 | `@metanoia/react` | Optional React component |
 | `@metanoia/client` | Typed client for custom web and mobile interfaces |
+| `create-metanoia-mosaic` | Express starter generator |
 
 ## Documentation
 
 - [Detailed setup and integration](docs/setup.md)
+- [Next.js, Hono, and Fastify recipes](docs/frameworks/)
+- [React Native / Expo starter](examples/react-native/README.md)
 - [Provider, image, and voice configuration](docs/providers-and-media.md)
 - [Personalization and privacy](docs/personalization-and-privacy.md)
 - [Widget customization](docs/customization.md)

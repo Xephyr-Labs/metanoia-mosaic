@@ -1,1 +1,36 @@
-{"name":"@metanoia/widget","version":"0.1.0","type":"module","main":"./dist/index.js","types":"./dist/index.d.ts","exports":{".":{"types":"./dist/index.d.ts","import":"./dist/index.js"}},"files":["dist"],"scripts":{"build":"tsc -p tsconfig.json","typecheck":"tsc -p tsconfig.json --noEmit"},"devDependencies":{"typescript":"^5.9.2"}}
+{
+  "name": "@metanoia/widget",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./loader": "./dist/loader.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && esbuild src/loader.ts --bundle --format=iife --target=es2020 --outfile=dist/loader.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xephyr-Labs/metanoia-mosaic.git",
+    "directory": "packages/widget"
+  },
+  "homepage": "https://github.com/Xephyr-Labs/metanoia-mosaic#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

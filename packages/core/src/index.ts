@@ -397,3 +397,5 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
 export type { Chatbot, ChatbotEvent, ChatbotOptions, Branding, Capabilities, ContextLimits, IdentityResolver, PersonalizationOptions, ChatbotTool, ChatbotToolContext, UserIdentity, WidgetConfig } from "./types.js";
 export { ChatbotError } from "./errors.js";
 export { expressHandler } from "./express.js";
+
+export { createChatbotFetchHandler, type FetchHandlerOptions } from "./fetch.js";

@@ -44,3 +44,9 @@ This makes one additional short, non-streaming provider request after each compl
 The widget uses text nodes for branding and messages. It exposes `part="launcher"` and `part="panel"` for targeted CSS and the `--omni-accent`, `--omni-width`, and `--omni-height` CSS properties. Each mount has its own requests and state. Call `destroy()` when removing it from the page.
 
 The current widget supports history, new conversations, preference JSON editing, manually saved memories, image attachment when enabled, microphone transcription when enabled, and on-demand speech playback when enabled. Image previews and guided preference fields are not included yet.
+
+## Localization and conversation persistence
+
+Use `locale` to set the widget language metadata and automatic text direction, or set `dir` to `ltr` or `rtl`. Pass `labels` to translate visible controls, statuses, and accessibility names. App-provided `greeting` and suggested prompts remain independent.
+
+`conversationStore` lets the host save and restore the active conversation ID across page loads. Scope its key to the authenticated user and clear it on sign-out. For refreshed bearer tokens, `headers` can be an async callback; `credentials` controls Fetch cookie behavior. The no-build `<metanoia-chat>` loader accepts these as JavaScript properties before insertion into the page.

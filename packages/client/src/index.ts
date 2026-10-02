@@ -5,6 +5,9 @@ export type ChatbotClientOptions = {
   credentials?: RequestCredentials;
 };
 
+export type NativeUploadFile = { uri: string; name: string; type: string };
+export type UploadFile = Blob | NativeUploadFile;
+
 export type ConversationSummary = { id: string; title: string; created_at: string; updated_at: string };
 export type ChatbotConfig = {
   branding: Record<string, unknown>;
@@ -98,28 +101,30 @@ export function createChatbotClient(options: ChatbotClientOptions) {
   }
 
   return {
-    async config() { return request<ChatbotConfig>("/config"); },
-    async conversations() { return request<{ conversations: ConversationSummary[] }>("/conversations"); },
-    async createConversation() { return request<{ conversation: ConversationSummary }>("/conversations", { method: "POST", body: "{}" }); },
-    async conversation(id: string) { return request<{ conversation: ConversationSummary; messages: Array<Record<string, unknown>> }>(`/conversations/${encodeURIComponent(id)}`); },
-    async deleteConversation(id: string) { return request<void>(`/conversations/${encodeURIComponent(id)}`, { method: "DELETE" }); },
-    async preferences() { return request<{ preferences: Record<string, unknown> }>("/preferences"); },
-    async updatePreferences(preferences: Record<string, unknown>) { return request<{ preferences: Record<string, unknown> }>("/preferences", { method: "PUT", body: JSON.stringify({ preferences }) }); },
-    async memories() { return request<{ memories: Array<{ id: string; content: string; created_at: string }> }>("/memories"); },
-    async addMemory(content: string) { return request<{ memory: { id: string; content: string } }>("/memories", { method: "POST", body: JSON.stringify({ content }) }); },
-    async updateMemory(id: string, content: string) { return request<{ ok: boolean }>(`/memories/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ content }) }); },
-    async deleteMemory(id: string) { return request<void>(`/memories/${encodeURIComponent(id)}`, { method: "DELETE" }); },
-    async deleteUserData() { return request<void>("/user-data", { method: "DELETE" }); },
-    async uploadImage(conversationId: string, file: Blob, filename = "image") {
+    async config(signal?: AbortSignal) { return request<ChatbotConfig>("/config", { signal }); },
+    async conversations(signal?: AbortSignal) { return request<{ conversations: ConversationSummary[] }>("/conversations", { signal }); },
+    async createConversation(signal?: AbortSignal) { return request<{ conversation: ConversationSummary }>("/conversations", { method: "POST", body: "{}", signal }); },
+    async conversation(id: string, signal?: AbortSignal) { return request<{ conversation: ConversationSummary; messages: Array<Record<string, unknown>> }>(`/conversations/${encodeURIComponent(id)}`, { signal }); },
+    async deleteConversation(id: string, signal?: AbortSignal) { return request<void>(`/conversations/${encodeURIComponent(id)}`, { method: "DELETE", signal }); },
+    async preferences(signal?: AbortSignal) { return request<{ preferences: Record<string, unknown> }>("/preferences", { signal }); },
+    async updatePreferences(preferences: Record<string, unknown>, signal?: AbortSignal) { return request<{ preferences: Record<string, unknown> }>("/preferences", { method: "PUT", body: JSON.stringify({ preferences }), signal }); },
+    async memories(signal?: AbortSignal) { return request<{ memories: Array<{ id: string; content: string; created_at: string }> }>("/memories", { signal }); },
+    async addMemory(content: string, signal?: AbortSignal) { return request<{ memory: { id: string; content: string } }>("/memories", { method: "POST", body: JSON.stringify({ content }), signal }); },
+    async updateMemory(id: string, content: string, signal?: AbortSignal) { return request<{ ok: boolean }>(`/memories/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ content }), signal }); },
+    async deleteMemory(id: string, signal?: AbortSignal) { return request<void>(`/memories/${encodeURIComponent(id)}`, { method: "DELETE", signal }); },
+    async deleteUserData(signal?: AbortSignal) { return request<void>("/user-data", { method: "DELETE", signal }); },
+    async uploadImage(conversationId: string, file: UploadFile, filename = "image", signal?: AbortSignal) {
       const form = new FormData();
       form.append("conversationId", conversationId);
-      form.append("file", file, filename);
-      return request<{ mediaId: string; mime: string; width: number; height: number }>("/media", { method: "POST", body: form });
+      if (typeof Blob !== "undefined" && file instanceof Blob) form.append("file", file, filename);
+      else form.append("file", file as unknown as string);
+      return request<{ mediaId: string; mime: string; width: number; height: number }>("/media", { method: "POST", body: form, signal });
     },
-    async transcribe(file: Blob, filename = "recording.webm") {
+    async transcribe(file: UploadFile, filename = "recording.webm", signal?: AbortSignal) {
       const form = new FormData();
-      form.append("file", file, filename);
-      return request<{ text: string }>("/transcriptions", { method: "POST", body: form });
+      if (typeof Blob !== "undefined" && file instanceof Blob) form.append("file", file, filename);
+      else form.append("file", file as unknown as string);
+      return request<{ text: string }>("/transcriptions", { method: "POST", body: form, signal });
     },
     async speech(text: string, signal?: AbortSignal) {
       const configured = typeof options.headers === "function" ? await options.headers() : options.headers;

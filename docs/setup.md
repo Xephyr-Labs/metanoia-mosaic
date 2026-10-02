@@ -1,6 +1,6 @@
 # Setup and integration
 
-Metanoia Mosaic is a Node.js workspace containing a server package and optional web clients. Node.js 20 or newer is required. The packages are currently maintained in this repository; install them from the workspace or build package archives for local application testing.
+Metanoia Mosaic is a Node.js workspace containing a server package and optional web clients. Node.js 20 or newer is required. The packages are prepared for public npm releases. Until the first release is published, use the workspace and local examples.
 
 ## Get the workspace
 
@@ -12,7 +12,7 @@ npm run build
 npm run typecheck
 ```
 
-The build generates the `dist/` files consumed by the packages. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
+The build generates the `dist/` files consumed by the packages. When published, scaffold an Express starter with `npm create metanoia-mosaic`. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
 
 ```sh
 CHATBOT_DEMO_MODE=true npm run start --workspace @metanoia/example-express
@@ -72,6 +72,32 @@ Set `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` in the server environment. For O
 
 The Express adapter receives requests below `/assistant` and serves routes such as `/config` and `/conversations` relative to that mount. For another Node.js framework, pass the incoming `Request` to `chatbot.handle(request)` and return its `Response`. Await `chatbot.ready` before accepting requests, and call `chatbot.close()` during shutdown.
 
+## Add the widget without a framework
+
+After the first npm release, a plain HTML page can load the bundled custom element directly:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0.1.0/dist/loader.js" defer></script>
+<metanoia-chat endpoint="/assistant" name="Mira" avatar-url="/assistant.svg" theme="system"></metanoia-chat>
+```
+
+For bearer authentication or persisted thread state, set properties before attaching the element:
+
+```js
+const assistant = document.createElement("metanoia-chat");
+assistant.setAttribute("endpoint", "/assistant");
+assistant.headers = async () => ({ authorization: `Bearer ${await getFreshAccessToken()}` });
+const key = "assistant-thread:" + currentUser.stableId; // scope per signed-in user
+assistant.conversationStore = {
+  load: () => localStorage.getItem(key) ?? undefined,
+  save: id => localStorage.setItem(key, id),
+  clear: () => localStorage.removeItem(key),
+};
+document.querySelector("#assistant-root").append(assistant);
+```
+
+The widget also accepts `credentials`, `locale`, `dir`, and localized `labels` properties. Keep persisted conversation IDs namespaced to the authenticated user and clear them on sign-out.
+
 ## Add the web widget
 
 Install or link `@metanoia/widget` into the frontend build, then mount it once on a page:
@@ -90,9 +116,9 @@ const assistant = mount(document.querySelector("#assistant"), {
 await assistant.ready;
 ```
 
-Pass branding and style through `mount` or the server's `branding` configuration. The widget uses Shadow DOM so its styles stay isolated from the host page. See [customization](customization.md) for all options and suggestion-pill behavior.
+Pass branding and style through `mount` or the server's `branding` configuration. `WidgetOptions.labels` replaces built-in UI text; `locale` sets the assistant element language and `dir` supports left-to-right, right-to-left, or locale-detected direction. The widget supports accessible names, keyboard focus, escape-to-close, and live response announcements. The widget uses Shadow DOM so its styles stay isolated from the host page. See [customization](customization.md) for all options and suggestion-pill behavior.
 
-For React, use `@metanoia/react`. For a custom web or mobile interface, use `@metanoia/client` to call the same HTTP API and consume its streamed events. Mobile clients must provide authenticated headers and a Fetch implementation that supports readable streaming for incremental SSE.
+For framework-specific server examples, see the [Next.js](frameworks/nextjs.md), [Hono](frameworks/hono.md), and [Fastify](frameworks/fastify.md) recipes. For native UI, start with the [React Native / Expo example](../examples/react-native/README.md). For React web UI, use `@metanoia/react`. For a custom web or mobile interface, use `@metanoia/client` to call the same HTTP API and consume its streamed events. Mobile clients must provide authenticated headers and a Fetch implementation that supports readable streaming for incremental SSE.
 
 ## Choose storage and capabilities
 
@@ -121,3 +147,7 @@ npm run dev --workspace @metanoia/example-express
 ```
 
 Open `http://localhost:3000`. See [the example guide](../examples/express/README.md) for network access and deployment notes.
+
+## Publish packages
+
+The GitHub release workflow uses Changesets. Add a changeset with `npm run changeset`, merge the generated version pull request, and the workflow publishes all packages. Configure the repository `NPM_TOKEN` secret with publish access to the `@metanoia` scope and enable GitHub Actions to create release commits and pull requests. The CLI package is released separately as `create-metanoia-mosaic`.

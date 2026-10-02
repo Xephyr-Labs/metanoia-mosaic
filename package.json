@@ -12,9 +12,15 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:example": "npm run dev -w @metanoia/example-express",
     "clean": "rm -rf packages/*/dist examples/*/dist",
-    "test": "npm run build && node --test tests/*.test.mjs"
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish",
+    "check": "npm run typecheck && npm run build",
+    "create": "node packages/create-metanoia-mosaic/src/cli.js"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "jsdom": "^29.1.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
