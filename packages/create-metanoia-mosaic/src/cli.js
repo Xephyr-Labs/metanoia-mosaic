@@ -4,18 +4,22 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { parseArgs } from "node:util";
 
 const args = process.argv.slice(2);
 if (args.includes("--help") || args.includes("-h")) {
   console.log("Usage: npm create metanoia-mosaic -- [--name my-app] [--template express] [--yes]");
   process.exit(0);
 }
-const option = name => args[args.indexOf(name) + 1];
-const templateArg = option("--template");
-const nameArg = option("--name");
-const yes = args.includes("--yes") || args.includes("-y");
-const prompt = yes ? undefined : createInterface({ input: stdin, output: stdout });
+let prompt;
 try {
+  const { values } = parseArgs({ args, options: {
+    name: { type: "string" }, template: { type: "string" },
+    yes: { type: "boolean", short: "y" },
+  } });
+  const templateArg = values.template;
+  const nameArg = values.name;
+  prompt = values.yes || !stdin.isTTY ? undefined : createInterface({ input: stdin, output: stdout });
   const template = templateArg ?? ((prompt ? await prompt.question("Template (express): ") : "express") || "express");
   const projectName = nameArg ?? ((prompt ? await prompt.question("Project directory (my-assistant): ") : "my-assistant") || "my-assistant");
   if (template !== "express") throw new Error(`Unknown template '${template}'. Available templates: express.`);
@@ -26,7 +30,7 @@ try {
   await cp(source, destination, { recursive: true });
   const packagePath = path.join(destination, "package.json");
   const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
-  packageJson.name = projectName;
+  packageJson.name = projectName.toLowerCase();
   await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
   console.log(`\nCreated ${projectName}. Next:\n  cd ${projectName}\n  cp .env.example .env\n  npm install\n  npm run dev\n\nAdd your application's authenticated identity resolver in src/auth.js before exposing the server.`);
 } catch (error) {

@@ -26,4 +26,20 @@ app.use("/assistant", expressHandler(chatbot));
 app.get("/metanoia-chat.js", (_request, response) => response.sendFile(widgetLoader));
 app.get("/", (_request, response) => response.type("html").send(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mosaic Assistant</title><body><metanoia-chat endpoint="/assistant" name="Mosaic Assistant"></metanoia-chat><script src="/metanoia-chat.js" defer></script></body></html>`));
 const server = app.listen(Number(process.env.PORT ?? 3000));
-for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => server.close(async () => { await chatbot.close(); process.exit(0); }));
+let stopping = false;
+async function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  try {
+    const stopped = new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await chatbot.close();
+    // SSE explicitly uses keep-alive; close those sockets after saving interrupted turns.
+    server.closeAllConnections();
+    await stopped;
+    process.exit(0);
+  } catch (error) {
+    console.error("Assistant shutdown failed:", error);
+    process.exit(1);
+  }
+}
+for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => void shutdown());

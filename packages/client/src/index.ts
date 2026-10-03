@@ -18,7 +18,7 @@ export type ChatbotEvent =
   | { type: "usage"; data: { input?: number; output?: number; cachedInput?: number } }
   | { type: "tool"; data: { name: string; label: string; status: "running" | "complete" | "failed" } }
   | { type: "citation"; data: { url: string; title: string } }
-  | { type: "status"; data: { message: string } }
+  | { type: "status"; data: { message: string; code?: string } }
   | { type: "suggestions"; data: { prompts: string[] } }
   | { type: "done"; data: { messageId: string } }
   | { type: "error"; data: { code: string; message: string } };

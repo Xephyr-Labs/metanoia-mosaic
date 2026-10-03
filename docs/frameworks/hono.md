@@ -1,6 +1,6 @@
 # Hono
 
-The Hono adapter uses its standard Fetch request and response objects. This works with Node adapters such as `@hono/node-server` and edge platforms when the selected storage/provider dependencies are supported by that runtime.
+The Hono adapter uses its standard Fetch request and response objects with Node adapters such as `@hono/node-server`. The chatbot package requires Node.js, including its built-in storage dependencies.
 
 ```ts
 import { Hono } from "hono";

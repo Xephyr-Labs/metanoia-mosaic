@@ -14,13 +14,15 @@
     "clean": "rm -rf packages/*/dist examples/*/dist",
     "test": "npm run build && node --test tests/*.test.mjs",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts",
     "release": "changeset publish",
     "check": "npm run typecheck && npm run build",
-    "create": "node packages/create-metanoia-mosaic/src/cli.js"
+    "create": "npm run build -w create-metanoia-mosaic && node packages/create-metanoia-mosaic/dist/cli.js"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
+    "fastify": "^5.12.5",
+    "hono": "^4.13.12",
     "jsdom": "^29.1.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

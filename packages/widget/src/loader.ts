@@ -1,11 +1,5 @@
 import { mount, type ConversationStore, type WidgetLabels, type WidgetOptions } from "./index.js";
 
-type MosaicElement = HTMLElement & {
-  authHeaders?: WidgetOptions["headers"];
-  conversationStore?: ConversationStore;
-  labels?: WidgetLabels;
-};
-
 const observed = ["endpoint", "name", "avatar-url", "greeting", "theme", "placement", "accent", "width", "height", "launcher", "locale", "dir", "credentials"];
 
 class MetanoiaChatElement extends HTMLElement {
@@ -16,12 +10,18 @@ class MetanoiaChatElement extends HTMLElement {
   private localizedLabels?: WidgetLabels;
 
   connectedCallback() {
+    // Values assigned before a deferred script upgrades the element otherwise
+    // shadow the prototype setters and never reach mount().
+    const properties = this as unknown as Record<string, unknown>;
+    for (const key of ["headers", "conversationStore", "labels"]) {
+      if (!Object.hasOwn(this, key)) continue;
+      const value = properties[key];
+      delete properties[key];
+      properties[key] = value;
+    }
     if (this.instance) return;
     const endpoint = this.getAttribute("endpoint");
-    if (!endpoint) {
-      console.error("<metanoia-chat> requires an endpoint attribute.");
-      return;
-    }
+    if (!endpoint) return;
     this.instance = mount(this, this.options(endpoint));
   }
 
@@ -30,7 +30,17 @@ class MetanoiaChatElement extends HTMLElement {
     this.instance = undefined;
   }
 
-  attributeChangedCallback() {
+  attributeChangedCallback(name: string, previous: string | null, value: string | null) {
+    if (previous === value) return;
+    if (name === "endpoint") {
+      this.instance?.destroy();
+      this.instance = undefined;
+    }
+    if (!this.isConnected) return;
+    if (!this.instance) {
+      this.connectedCallback();
+      return;
+    }
     const endpoint = this.getAttribute("endpoint");
     if (this.instance && endpoint) this.instance.update(this.options(endpoint));
   }
@@ -54,7 +64,9 @@ class MetanoiaChatElement extends HTMLElement {
     const attr = (name: string) => this.getAttribute(name) ?? undefined;
     const number = (name: string) => {
       const value = attr(name);
-      return value === undefined ? undefined : Number(value);
+      if (!value?.trim()) return undefined;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : undefined;
     };
     return {
       endpoint,

@@ -14,6 +14,8 @@ Bring your own OpenAI-compatible provider. Keep identity, memory, tools, and dat
 npm create metanoia-mosaic
 ```
 
+Public packages are awaiting their first release. Until then, use the [workspace setup](docs/setup.md#get-the-workspace) and local starter generator.
+
 ## Capabilities
 
 - **Provider choice:** connect OpenAI-compatible chat APIs, including OpenRouter and DeepInfra. Provider credentials stay on your server.

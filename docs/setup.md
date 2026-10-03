@@ -12,7 +12,7 @@ npm run build
 npm run typecheck
 ```
 
-The build generates the `dist/` files consumed by the packages. When published, scaffold an Express starter with `npm create metanoia-mosaic`. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
+The build generates the `dist/` files consumed by the packages. Run the local generator with `npm run create -- --name my-assistant --yes`. Its generated dependencies require published packages or local tarballs; the Express workspace example runs directly from this checkout. When published, scaffold an Express starter with `npm create metanoia-mosaic`. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
 
 ```sh
 CHATBOT_DEMO_MODE=true npm run start --workspace @metanoia/example-express
@@ -60,11 +60,19 @@ await chatbot.ready;
 app.use("/assistant", expressHandler(chatbot));
 
 const server = app.listen(3000);
+let stopping = false;
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => server.close(async () => {
-    await chatbot.close();
-    process.exit(0);
-  }));
+  process.once(signal, async () => {
+    if (stopping) return;
+    stopping = true;
+    try {
+      const stopped = new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      await chatbot.close();
+      server.closeAllConnections();
+      await stopped;
+      process.exit(0);
+    } catch (error) { console.error(error); process.exit(1); }
+  });
 }
 ```
 
@@ -77,7 +85,7 @@ The Express adapter receives requests below `/assistant` and serves routes such 
 After the first npm release, a plain HTML page can load the bundled custom element directly:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0.1.0/dist/loader.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0.2.0/dist/loader.js" defer></script>
 <metanoia-chat endpoint="/assistant" name="Mira" avatar-url="/assistant.svg" theme="system"></metanoia-chat>
 ```
 
@@ -96,7 +104,7 @@ assistant.conversationStore = {
 document.querySelector("#assistant-root").append(assistant);
 ```
 
-The widget also accepts `credentials`, `locale`, `dir`, and localized `labels` properties. Keep persisted conversation IDs namespaced to the authenticated user and clear them on sign-out.
+The custom element accepts `credentials`, `locale`, and `dir` attributes, plus a localized `labels` JavaScript property. Keep persisted conversation IDs namespaced to the authenticated user. On sign-out or account changes, clear the old store and remove/recreate the element so drafts and in-memory messages are discarded too.
 
 ## Add the web widget
 
@@ -150,4 +158,4 @@ Open `http://localhost:3000`. See [the example guide](../examples/express/README
 
 ## Publish packages
 
-The GitHub release workflow uses Changesets. Add a changeset with `npm run changeset`, merge the generated version pull request, and the workflow publishes all packages. Configure the repository `NPM_TOKEN` secret with publish access to the `@metanoia` scope and enable GitHub Actions to create release commits and pull requests. The CLI package is released separately as `create-metanoia-mosaic`.
+The GitHub release workflow uses Changesets 3 and `changesets/action@v2`. Add a changeset with `npm run changeset`, merge the generated version pull request, and the workflow publishes the changed packages. Configure the repository `NPM_TOKEN` secret with publish access to the `@metanoia` scope and `create-metanoia-mosaic`; the workflow passes it to npm as `NODE_AUTH_TOKEN`. Enable GitHub Actions to create release commits and pull requests. The CLI build takes backend/widget versions from the workspace, so generated starters always target the versions being published.
