@@ -8,8 +8,8 @@
     "smoke": "npm run build --workspace @metanoia/client && npm run build --workspace @metanoia/chatbot && npm run build --workspace @metanoia/widget && node scripts/smoke.js"
   },
   "dependencies": {
-    "@metanoia/chatbot": "0.1.0",
+    "@metanoia/chatbot": "0.2.0",
     "express": "^5.1.0",
-    "@metanoia/client": "0.1.0"
+    "@metanoia/client": "0.2.0"
   }
 }
