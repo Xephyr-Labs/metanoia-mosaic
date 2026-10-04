@@ -63,3 +63,21 @@ test('a rejected memory deletion keeps the memory visible',async()=>{
  const widget=mount(host,{endpoint:'/api'});
  try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const row=host.shadowRoot.querySelector('.memory');row.querySelectorAll('button')[1].click();await tick();assert.equal(row.isConnected,true);assert.equal(row.querySelectorAll('button')[1].textContent,'Unable to remove. Try again.');}finally{widget.destroy();}
 });
+test('a stream that ends without done or error is reported as interrupted',async()=>{
+ const host=setup({pending:true});const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;send(host);await tick();streamController.enqueue(new TextEncoder().encode('event: delta\ndata: {"text":"Partial"}\n\n'));streamController.close();await tick();await tick();assert.equal(host.shadowRoot.querySelector('.status').textContent,'The response was interrupted.');}finally{widget.destroy();}
+});
+test('history and settings views keep a close control',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;widget.open();host.shadowRoot.querySelector('.toolbar button').click();await tick();await tick();const close=host.shadowRoot.querySelector('.head button');assert.ok(close);close.click();assert.ok(host.shadowRoot.querySelector('.panel').classList.contains('hidden'));}finally{widget.destroy();}
+});
+test('assistant Markdown renders as safe DOM nodes',async()=>{
+ const host=setup({pending:true});const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;send(host);await tick();
+  const reply=JSON.stringify({text:'Steps:\n\n1. Open **Settings**\n2. Click `Invite`\n\nSee [docs](https://example.com) <img src=x onerror=alert(1)>'});
+  streamController.enqueue(new TextEncoder().encode(`event: delta\ndata: ${reply}\n\nevent: done\ndata: {}\n\n`));streamController.close();await tick();await tick();
+  const answer=host.shadowRoot.querySelector('.msg.rich');
+  assert.equal(answer.querySelectorAll('ol li').length,2);assert.equal(answer.querySelector('strong').textContent,'Settings');assert.equal(answer.querySelector('code').textContent,'Invite');
+  assert.equal(answer.querySelector('a').getAttribute('href'),'https://example.com');assert.equal(answer.querySelector('img'),null);assert.match(answer.textContent,/<img src=x/);
+ }finally{widget.destroy();}
+});
