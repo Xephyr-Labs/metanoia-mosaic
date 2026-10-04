@@ -85,7 +85,7 @@ The Express adapter receives requests below `/assistant` and serves routes such 
 After the first npm release, a plain HTML page can load the bundled custom element directly:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0.2.0/dist/loader.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0/dist/loader.js" defer></script>
 <metanoia-chat endpoint="/assistant" name="Mira" avatar-url="/assistant.svg" theme="system"></metanoia-chat>
 ```
 

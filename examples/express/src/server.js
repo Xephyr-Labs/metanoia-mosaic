@@ -32,7 +32,7 @@ const bot=createChatbot({
   storage:process.env.CHATBOT_DATABASE_URL?{type:"postgres",connectionString:process.env.CHATBOT_DATABASE_URL}:{type:"sqlite",filename:path.resolve(process.env.CHATBOT_DB??"./data/chatbot.sqlite")},
   anonymous:true,
   allowedOrigins,
-  branding:{name:"Mira",avatarUrl:"/assistant.svg",greeting:"Welcome back. What can I help you with?",personality:"Be warm, clear, and concise. Do not invent account details; use host tools when a question requires live account data.",theme:"system",placement:"bottom-right",width:400,height:680,suggestedPrompts:["Help me get started with Northstar","I have a question about plans and billing","I need help with my account or security"],colors:{accent:"#536d62",panel:"#ffffff",text:"#1c2024",muted:"#727a80",userMessage:"#536d62",assistantMessage:"#f1f4f2",border:"#e3e7e9"}},
+  branding:{name:"Mira",avatarUrl:"/assistant.svg",greeting:"Welcome back. What can I help you with?",personality:"Be warm, clear, and concise: answer in at most three short sentences or a short numbered list. Do not invent account details; use host tools when a question requires live account data.",theme:"system",placement:"bottom-right",width:400,height:680,suggestedPrompts:["Help me get started with Northstar","I have a question about plans and billing","I need help with my account or security"],colors:{accent:"#536d62",panel:"#ffffff",text:"#1c2024",muted:"#727a80",userMessage:"#536d62",assistantMessage:"#f1f4f2",border:"#e3e7e9"}},
   capabilities:{suggestions:{enabled:true,count:3}},
   rateLimit:{requests:40,windowMs:60_000},
 });

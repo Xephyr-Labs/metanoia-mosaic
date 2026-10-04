@@ -41,7 +41,7 @@ capabilities: {
 
 This makes one additional short, non-streaming provider request after each completed answer. It is disabled by default to avoid extra token usage and latency. The widget renders suggestions as aligned pills; selecting one places it in the composer for the user to review and send. Custom clients receive them as `suggestions` SSE events. Suggestions are also saved on the assistant message as `suggestions: string[]` and restored when history is opened. Branding updates preserve drafts and active reply elements.
 
-The widget uses text nodes for branding and messages. It exposes `part="launcher"` and `part="panel"` for targeted CSS and the `--omni-accent`, `--omni-width`, and `--omni-height` CSS properties. Each mount has its own requests and state. Call `destroy()` when removing it from the page.
+The widget uses text nodes for branding and user messages; assistant replies render a small Markdown subset (paragraphs, lists, headings, bold, italic, inline and fenced code, and http(s) links) built from DOM nodes, so model output is never parsed as HTML. It exposes `part="launcher"` and `part="panel"` for targeted CSS and the `--omni-accent`, `--omni-width`, and `--omni-height` CSS properties. Each mount has its own requests and state. Call `destroy()` when removing it from the page.
 
 The current widget supports history, new conversations, preference JSON editing, manually saved memories, image attachment when enabled, microphone transcription when enabled, and on-demand speech playback when enabled. Image previews and guided preference fields are not included yet.
 
