@@ -1,5 +1,3 @@
-import { SqliteStore } from "./storage.js";
-import { PostgresStore } from "./storage/postgres.js";
 import type { Store } from "./storage/interface.js";
 import { validateOptions } from "./config.js";
 import { ChatbotError, errorResponse } from "./errors.js";
@@ -31,7 +29,8 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
   const storage = options.storage ?? {};
   if (storage.type === "postgres" && !storage.connectionString) throw new ChatbotError("invalid_config", "storage.connectionString is required for PostgreSQL.",500);
   let store!:Store;
-  const storeReady=(storage.type==="postgres"?PostgresStore.open(storage.connectionString!):Promise.resolve(new SqliteStore(storage.filename))).then(value=>{store=value;return value;});
+  // Lazy-load each backend so Postgres hosts never load the native better-sqlite3 module (and SQLite hosts never load pg).
+  const storeReady=(storage.type==="postgres"?import("./storage/postgres.js").then(m=>m.PostgresStore.open(storage.connectionString!)):import("./storage.js").then(m=>new m.SqliteStore(storage.filename))).then((value:Store)=>{store=value;return value;});
   void storeReady.catch(()=>undefined);
   const limits=options.context ?? {};
   const activeControllers=new Set<AbortController>(),activeCompletions=new Set<Promise<void>>();
@@ -110,6 +109,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
   const originAllowed=(request:Request)=>{
     const origin=request.headers.get("origin");
     if(!origin) return true;
+    if(typeof options.allowedOrigins==="function") return options.allowedOrigins(origin);
     if(options.allowedOrigins?.length) return options.allowedOrigins.includes(origin);
     try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;}
   };

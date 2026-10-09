@@ -10,6 +10,7 @@ export function validateOptions(options: ChatbotOptions): void {
   if(options.provider.promptCacheKey!==undefined&&(typeof options.provider.promptCacheKey!=="string"||!options.provider.promptCacheKey.trim()||options.provider.promptCacheKey.length>200))throw new ChatbotError("invalid_config","provider.promptCacheKey must be a non-empty string under 200 characters.",500);
   if(options.maxToolCallsPerTurn!==undefined&&(!Number.isInteger(options.maxToolCallsPerTurn)||options.maxToolCallsPerTurn<1||options.maxToolCallsPerTurn>12))throw new ChatbotError("invalid_config","maxToolCallsPerTurn must be a whole number from 1 to 12.",500);
   if(options.toolTimeoutMs!==undefined&&(!Number.isFinite(options.toolTimeoutMs)||options.toolTimeoutMs<1||options.toolTimeoutMs>120_000))throw new ChatbotError("invalid_config","toolTimeoutMs must be from 1 millisecond to 2 minutes.",500);
+  if(options.allowedOrigins!==undefined&&typeof options.allowedOrigins!=="function"&&!(Array.isArray(options.allowedOrigins)&&options.allowedOrigins.every(origin=>typeof origin==="string")))throw new ChatbotError("invalid_config","allowedOrigins must be an array of origins or a predicate function.",500);
   if(options.tools!==undefined&&!Array.isArray(options.tools))throw new ChatbotError("invalid_config","tools must be an array.",500);
   const toolNames=new Set<string>();
   for(const tool of options.tools??[]){

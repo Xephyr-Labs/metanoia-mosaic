@@ -130,7 +130,7 @@ For framework-specific server examples, see the [Next.js](frameworks/nextjs.md),
 
 ## Choose storage and capabilities
 
-SQLite is the default and is intended for one Node.js process. For shared deployments, configure PostgreSQL:
+SQLite is the default and is intended for one Node.js process. Its native driver, `better-sqlite3`, is an optional dependency loaded only when SQLite storage is selected, so PostgreSQL deployments (including bundled or serverless ones) never load it. For shared deployments, configure PostgreSQL:
 
 ```js
 storage: { type: "postgres", connectionString: process.env.DATABASE_URL }

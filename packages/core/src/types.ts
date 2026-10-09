@@ -51,7 +51,8 @@ export type ChatbotOptions = {
   toolTimeoutMs?: number;
   identity?: IdentityResolver;
   anonymous?: boolean;
-  allowedOrigins?: string[];
+  /** Exact browser origins, or a predicate for patterns such as preview-deploy hosts. */
+  allowedOrigins?: string[] | ((origin: string) => boolean);
   rateLimit?: { requests: number; windowMs: number };
   onEvent?: (event: ChatbotEvent) => void | Promise<void>;
 };

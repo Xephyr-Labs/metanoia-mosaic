@@ -239,7 +239,7 @@ Each request is tied to the user your resolver returns. Conversations, media, an
 
 ## Secure defaults
 
-- Only same-origin browser requests are accepted until you set `allowedOrigins`. Cross-site writes without an `Origin` header are rejected.
+- Only same-origin browser requests are accepted until you set `allowedOrigins` (a list of exact origins, or a `(origin) => boolean` predicate for patterns such as preview deploys). Cross-site writes without an `Origin` header are rejected.
 - Request bodies are size-capped before parsing. Images are checked by their magic bytes and dimensions, not just their declared type.
 - Context from history, memories, and tool results is labeled as untrusted data in the prompt, never as instructions.
 - One reply at a time per conversation, duplicate-submit protection through `requestId`, and optional per-user `rateLimit`.
