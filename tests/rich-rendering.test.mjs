@@ -83,3 +83,58 @@ test('text after a code block keeps a top margin',async()=>{
   assert.equal(parseFloat(margins.at(-1)),.65);msg.remove();
  }finally{style.remove();widget.destroy();}
 });
+
+const chart=JSON.stringify({type:'bar',title:'Revenue',labels:['Q1','Q2'],series:[{name:'2025',data:[4,6]},{name:'2026',data:[5,-2]}],unit:'$k'});
+test('chart blocks render accessible SVG with legend and data table',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```chart\n'+chart+'\n```');
+  const fig=last(host).querySelector('figure.chart');assert.equal(fig.querySelector('figcaption').textContent,'Revenue');
+  const svg=fig.querySelector('svg');assert.equal(svg.getAttribute('role'),'img');assert.equal(svg.getAttribute('aria-label'),'Revenue');
+  const bars=[...svg.querySelectorAll('rect.bar')];assert.equal(bars.length,4);assert.match(bars[0].querySelector('title').textContent,/2025 · Q1: 4 \$k/);
+  assert.ok(bars[3].classList.contains('series-2'));
+  assert.deepEqual([...fig.querySelectorAll('.legend li')].map(li=>li.textContent),['2025','2026']);
+  assert.equal(fig.querySelectorAll('table.sr-only tbody tr').length,2);
+ }finally{widget.destroy();}
+});
+test('line, area, pie, and scatter charts render their marks',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ const blocks=[{type:'line',series:[{data:[1,3,2]}]},{type:'area',series:[{data:[1,3,2]}]},{type:'pie',labels:['A','B'],series:[{data:[1,3]}]},{type:'scatter',series:[{name:'s',data:[[1,2],[3,4]]}]}];
+ try{await widget.ready;await say(host,blocks.map(b=>'```chart\n'+JSON.stringify(b)+'\n```').join('\n\n'));
+  const figs=[...last(host).querySelectorAll('figure.chart')];assert.equal(figs.length,4);
+  assert.equal(figs[0].querySelectorAll('polyline.line').length,1);assert.equal(figs[0].querySelectorAll('circle.dot').length,3);assert.equal(figs[0].querySelector('.legend'),null);
+  assert.equal(figs[1].querySelectorAll('polygon.area').length,1);
+  assert.equal(figs[2].querySelectorAll('path.slice').length,2);assert.equal(figs[2].querySelectorAll('.legend li').length,2);
+  assert.equal(figs[3].querySelectorAll('circle.dot').length,2);
+ }finally{widget.destroy();}
+});
+test('invalid chart JSON falls back to a code block with a note',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```chart\n{"type":"bar","series":[{"data":["x"]}]}\n```');
+  const block=last(host).querySelector('.code-block');assert.equal(block.querySelector('pre').textContent,'{"type":"bar","series":[{"data":["x"]}]}');assert.ok(block.querySelector('.render-note'));
+ }finally{widget.destroy();}
+});
+test('an unclosed chart shows a placeholder while streaming',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'pending');emit('delta',{text:'Here:\n```chart\n{"type":'});await settle();
+  assert.ok(last(host).querySelector('.render-pending'));assert.equal(last(host).querySelector('.code-block'),null);
+ }finally{widget.destroy();}
+});
+test('unclosed chart at end of reply renders',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```chart\n'+chart);
+  assert.equal(last(host).querySelector('.render-pending'),null);assert.ok(last(host).querySelector('figure.chart'));
+ }finally{widget.destroy();}
+});
+test('stopping mid-chart leaves no placeholder',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'pending');emit('delta',{text:'```chart\n{"type":'});await settle();
+  host.shadowRoot.querySelector('form').dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await settle();
+  assert.equal(last(host).querySelector('.render-pending'),null);assert.ok(last(host).querySelector('.code-block'));
+ }finally{widget.destroy();}
+});
+test('disabled charts render as code',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{charts:false}});
+ try{await widget.ready;await say(host,'```chart\n'+chart+'\n```');
+  assert.equal(last(host).querySelector('figure.chart'),null);assert.equal(last(host).querySelector('.code-block .render-note'),null);assert.ok(last(host).querySelector('.code-block'));
+ }finally{widget.destroy();}
+});
