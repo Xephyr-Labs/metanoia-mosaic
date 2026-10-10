@@ -59,6 +59,9 @@ function mermaid(source:string,ctx:RenderContext){
   const m=await load<Mermaid>(url);
   m.initialize({startOnLoad:false,securityLevel:"strict",theme:ctx.dark?"dark":"default",suppressErrorRendering:true,htmlLabels:false,flowchart:{htmlLabels:false}});
   const {svg}=await m.render(`omni-diagram-${++diagrams}`,source);
-  return svgImage(svg,ctx.label("diagram"),"diagram");
+  // Mermaid emits width="100%" + max-width, which collapses an <img>; size from the viewBox instead.
+  const vb=svg.match(/<svg[^>]*\sviewBox="[\d.\s-]*?\s([\d.]+)\s([\d.]+)"/i);
+  const sized=vb?svg.replace(/<svg\b[^>]*>/i,tag=>tag.replace(/\s(?:width|height)="[^"]*"/gi,"").replace(/\sstyle="[^"]*"/i,"").replace(/^<svg/i,`<svg width="${vb[1]}" height="${vb[2]}"`)):svg;
+  return svgImage(sized,ctx.label("diagram"),"diagram");
  },()=>code("mermaid",source,ctx,true),pending(ctx));
 }

@@ -40,9 +40,9 @@ function axisY(svg:SVGElement,ys:number[],y:(v:number)=>number){
 }
 
 export function renderChart(source:string){
- const spec=parse(source),fig=mk("figure","chart"),svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":spec.title??"Chart"}) as SVGElement;
+ const spec=parse(source),fig=mk("figure","chart"),svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":(typeof spec.title==="string"&&spec.title)||"Chart"}) as SVGElement;
  const label=(i:number)=>String(spec.labels?.[i]??i+1),name=(s:Series,i:number)=>s.name??`Series ${i+1}`;
- if(spec.title){const caption=mk("figcaption");caption.textContent=spec.title;fig.append(caption);}
+ if(typeof spec.title==="string"&&spec.title){const caption=mk("figcaption");caption.textContent=spec.title;fig.append(caption);}
  if(spec.type==="pie")pie(svg,spec,label);else if(spec.type==="scatter")scatter(svg,spec,name);else cartesian(svg,spec,label,name);
  fig.append(svg);
  const keys=spec.type==="pie"?spec.series[0]!.data.map((_,i)=>label(i)):spec.series.length>1?spec.series.map(name):[];

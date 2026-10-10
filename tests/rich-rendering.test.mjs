@@ -202,3 +202,21 @@ test('mermaid load failure falls back to code',async()=>{
   const block=last(host).querySelector('.code-block');assert.equal(block.querySelector('.code-bar span').textContent,'mermaid');assert.ok(block.querySelector('.render-note'));
  }finally{widget.destroy();}
 });
+test('mermaid svg gets an intrinsic size from its viewBox',async()=>{
+ const mermaidUrl=moduleUrl('export default {initialize(){},async render(){return {svg:"<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"100%\\" style=\\"max-width: 120px;\\" viewBox=\\"0 0 400 100\\"><text>x</text></svg>"}}}');
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{mermaidUrl}});
+ try{await widget.ready;await say(host,'```mermaid\ngraph TD; A-->B\n```');await settle();
+  const src=decodeURIComponent(last(host).querySelector('img.diagram').src);assert.match(src,/width="400"/);assert.match(src,/height="100"/);assert.doesNotMatch(src,/width="100%"|max-width/);
+ }finally{widget.destroy();}
+});
+test('Listen speaks only prose, not code bars or chart tables',async()=>{
+ const host=setup();const base=globalThis.fetch;let spoken;
+ globalThis.fetch=async(input,init)=>{if(String(input).endsWith('/speech')){spoken=JSON.parse(init.body).text;return new Response('x');}
+  if(String(input).endsWith('/config'))return Response.json({...config,capabilities:{voiceOutput:true}});return base(input,init);};
+ const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'Hello prose.\n\n```js\nlet a=1\n```\n\n```chart\n{"type":"bar","title":"Sales","labels":["Q1"],"series":[{"name":"Rev","data":[4242]}]}\n```');
+  const btn=[...last(host).querySelectorAll('button')].find(b=>b.parentElement===last(host));assert.ok(btn);
+  btn.click();await settle();
+  assert.match(spoken,/Hello prose/);assert.doesNotMatch(spoken,/Copy|4242|Sales/);
+ }finally{widget.destroy();}
+});
