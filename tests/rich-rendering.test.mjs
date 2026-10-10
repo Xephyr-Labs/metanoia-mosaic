@@ -1,0 +1,76 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import {mount} from '../packages/widget/dist/index.js';
+const dom=new JSDOM('<html><body></body></html>',{url:'http://lan.test/'});
+for(const name of ['window','document','location','HTMLElement'])globalThis[name]=dom.window[name];
+Object.defineProperty(dom.window.HTMLElement.prototype,'part',{get(){return {add(){}};}});
+globalThis.matchMedia=()=>({matches:false});globalThis.CSS={supports:()=>true};
+const config={branding:{name:'Mira',greeting:'Hello',theme:'light',placement:'bottom-right',width:380,height:650},capabilities:{}};
+const encoder=new TextEncoder();
+let posts=[],replies=[],live;
+// A reply is a Markdown string (streamed then done) or 'pending' (stream stays open; push frames with emit()).
+function stream(reply){return new Response(new ReadableStream({start(c){if(reply==='pending'){live=c;return;}c.enqueue(encoder.encode(`event: delta\ndata: ${JSON.stringify({text:reply})}\n\nevent: done\ndata: {}\n\n`));c.close();}}));}
+const emit=(event,data)=>live.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+function setup({history}={}){
+ document.body.replaceChildren();posts=[];replies=[];
+ globalThis.fetch=async(input,init={})=>{const url=String(input);
+  if(url.endsWith('/config'))return Response.json(config);
+  if(url.endsWith('/conversations'))return Response.json({conversation:{id:'chat'},conversations:[{id:'chat',title:'Chat'}]});
+  if(url.endsWith('/conversations/chat'))return Response.json({messages:history??[]});
+  if(url.endsWith('/messages')){posts.push(JSON.parse(init.body).content);return stream(replies.shift()??'ok');}
+  return Response.json({});};
+ const host=document.createElement('div');document.body.append(host);return host;
+}
+const settle=async()=>{for(let i=0;i<20;i++)await new Promise(r=>setTimeout(r,0));};
+const $=(host,selector)=>host.shadowRoot.querySelector(selector),$$=(host,selector)=>[...host.shadowRoot.querySelectorAll(selector)];
+async function say(host,reply,text='Hi'){replies.push(reply);const root=host.shadowRoot;root.querySelector('textarea').value=text;root.querySelector('form').dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await settle();}
+const last=host=>$$(host,'.msg.rich').at(-1);
+const moduleUrl=code=>`data:text/javascript,${encodeURIComponent(code)}`;
+const katexStub=moduleUrl('export default {renderToString:(t,o)=>"<math data-display=\\""+o.displayMode+"\\">"+t+"</math>"}');
+
+test('tables render with header, alignment, and inline markdown',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'| Plan | Price |\n|:--|--:|\n| **Pro** | 9 |\n| Team |');
+  const msg=last(host);assert.deepEqual([...msg.querySelectorAll('th')].map(n=>n.textContent),['Plan','Price']);
+  const cells=[...msg.querySelectorAll('tbody td')];assert.equal(cells.length,4);assert.equal(cells[0].querySelector('strong')?.textContent,'Pro');assert.equal(cells[1].style.textAlign,'right');assert.equal(cells[3].textContent,'');
+ }finally{widget.destroy();}
+});
+test('blockquotes, rules, strikethrough, and task lists render',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'> quoted **bit**\n\n---\n\n~~old~~ new\n\n- [x] done\n- [ ] todo');
+  const msg=last(host);assert.equal(msg.querySelector('blockquote strong')?.textContent,'bit');assert.ok(msg.querySelector('hr'));assert.equal(msg.querySelector('del')?.textContent,'old');
+  const boxes=[...msg.querySelectorAll('li.task input[type=checkbox]')];assert.deepEqual(boxes.map(b=>[b.checked,b.disabled]),[[true,true],[false,true]]);
+ }finally{widget.destroy();}
+});
+test('images allow only http(s) and raster data URLs',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'![cat](https://img.test/c.png) ![bad](javascript:alert(1)) ![svg](data:image/svg+xml;base64,PHN2Zz4=)');
+  const imgs=[...last(host).querySelectorAll('img')];assert.deepEqual(imgs.map(i=>i.getAttribute('src')),['https://img.test/c.png']);assert.equal(imgs[0].alt,'cat');assert.equal(imgs[0].closest('a')?.target,'_blank');
+  assert.match(last(host).textContent,/javascript:alert/);
+ }finally{widget.destroy();}
+});
+test('fenced code shows its language and a copy button',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```js\nconst a = 1;\n```');
+  const block=last(host).querySelector('.code-block');assert.equal(block.querySelector('pre').textContent,'const a = 1;');assert.equal(block.querySelector('.code-bar span').textContent,'js');assert.equal(block.querySelector('button.copy').textContent,'Copy');
+ }finally{widget.destroy();}
+});
+test('inline and display math render through the KaTeX loader',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{katexUrl:katexStub}});
+ try{await widget.ready;await say(host,'Area is $x^2$.\n\n$$\na+b\n$$');await settle();
+  const msg=last(host);assert.equal(msg.querySelector('.math math')?.textContent,'x^2');assert.equal(msg.querySelector('.math-display math')?.getAttribute('data-display'),'true');assert.equal(msg.querySelector('.math-display math')?.textContent,'a+b');
+ }finally{widget.destroy();}
+});
+test('currency is not math',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{katexUrl:katexStub}});
+ try{await widget.ready;await say(host,'It costs $5 and $10, or $5-$10.');await settle();
+  assert.equal(last(host).querySelector('.math,.math-source'),null);assert.equal(last(host).textContent,'It costs $5 and $10, or $5-$10.');
+ }finally{widget.destroy();}
+});
+test('math falls back to its source when KaTeX cannot load',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{katexUrl:moduleUrl('throw new Error("blocked")')}});
+ try{await widget.ready;await say(host,'Use $e=mc^2$ here.');await settle();
+  assert.equal(last(host).querySelector('code.math-source')?.textContent,'$e=mc^2$');
+ }finally{widget.destroy();}
+});
