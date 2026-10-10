@@ -3,7 +3,7 @@ import { PostgresStore } from "./storage/postgres.js";
 import type { Store } from "./storage/interface.js";
 import { validateOptions } from "./config.js";
 import { ChatbotError, errorResponse } from "./errors.js";
-import { buildMessages, estimateTokens } from "./context.js";
+import { buildMessages, estimateTokens, richResponseGuide } from "./context.js";
 import type { Chatbot, ChatbotEvent, ChatbotOptions, ChatbotTool, UserIdentity, WidgetConfig } from "./types.js";
 import { inspectImage } from "./media.js";
 import { executeTool, parseToolArguments, providerTools } from "./tools.js";
@@ -164,7 +164,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       }
       else if(route==="/config"&&request.method==="GET"){
         const branding=options.branding??{}, {personality:_privateInstructions,...publicBranding}=branding;
-        const config:WidgetConfig={branding:{...publicBranding,name:branding.name??"Assistant",greeting:branding.greeting??"Hi! How can I help?",theme:branding.theme??"system",placement:branding.placement??"bottom-right",width:branding.width??380,height:branding.height??640},capabilities:{images:!!options.capabilities?.images?.enabled,voiceInput:!!options.capabilities?.voiceInput?.enabled,voiceOutput:!!options.capabilities?.voiceOutput?.enabled,suggestions:!!options.capabilities?.suggestions?.enabled,...(options.capabilities?.suggestions?.enabled?{suggestionCount:options.capabilities.suggestions.count??3}:{}),voiceInputMaxSeconds:options.capabilities?.voiceInput?.maxSeconds??60}};
+        const config:WidgetConfig={branding:{...publicBranding,name:branding.name??"Assistant",greeting:branding.greeting??"Hi! How can I help?",theme:branding.theme??"system",placement:branding.placement??"bottom-right",width:branding.width??380,height:branding.height??640},capabilities:{images:!!options.capabilities?.images?.enabled,voiceInput:!!options.capabilities?.voiceInput?.enabled,voiceOutput:!!options.capabilities?.voiceOutput?.enabled,suggestions:!!options.capabilities?.suggestions?.enabled,richResponses:options.capabilities?.richResponses?.enabled!==false,...(options.capabilities?.suggestions?.enabled?{suggestionCount:options.capabilities.suggestions.count??3}:{}),voiceInputMaxSeconds:options.capabilities?.voiceInput?.maxSeconds??60}};
         response=json(config);
       } else {
         const resolved=await resolveIdentity(request),identity=resolved.identity;
@@ -274,7 +274,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const imageReserve=(mediaIds.length+historicalImageCount)*(limits.imageTokenReserve??1000),toolReserve=(options.tools?.length??0)?(limits.toolTokenReserve??800):0,inputAvailable=(limits.inputTokens??6000)-imageReserve-toolReserve;
     if(inputAvailable<1){await unlock();throw new ChatbotError("message_too_large","The image token reserve exceeds the configured context budget.",413);}
     let built:Awaited<ReturnType<typeof buildMessages>>;
-    try{built=await buildMessages(store,instance,user,id,body.content,options.branding?.personality,{...limits,inputTokens:inputAvailable});}
+    try{built=await buildMessages(store,instance,user,id,body.content,[options.branding?.personality,options.capabilities?.richResponses?.enabled!==false?richResponseGuide:""].filter(Boolean).join("\n\n"),{...limits,inputTokens:inputAvailable});}
     catch(error){await unlock();if(error instanceof Error&&error.message==="message_too_large")throw new ChatbotError("message_too_large","This message exceeds the configured context budget.",413);throw error;}
     if(deletingUsers.has(ownerKey(user))){await unlock();throw new ChatbotError("conflict","User data is being deleted. Please retry shortly.",409);}
     const estimate=built.estimate+imageReserve;

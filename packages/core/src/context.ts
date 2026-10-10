@@ -18,6 +18,18 @@ function boundedProfile(profile:Record<string,unknown>,explicit:Record<string,un
   return selected;
 }
 
+export const richResponseGuide=[
+  "Formatting: answer in Markdown. When it makes the answer clearer, you may also use:",
+  "- Tables: GitHub pipe tables.",
+  "- Charts: a fenced code block tagged chart (opened with ```chart) containing JSON {\"type\":\"bar|line|area|pie|scatter\",\"title\":\"...\",\"labels\":[\"...\"],\"series\":[{\"name\":\"...\",\"data\":[1,2]}],\"unit\":\"...\"}. Scatter data is [[x,y],...]. Pie uses the first series, one label per value. At most 8 series.",
+  "- Choices: when the user should pick from options, end the reply with a fenced code block tagged choices (opened with ```choices) containing JSON {\"question\":\"...\",\"options\":[\"A\",\"B\"],\"multi\":false}. Use at most one per reply.",
+  "- Diagrams: a fenced code block tagged mermaid (opened with ```mermaid).",
+  "- Illustrations: a fenced code block tagged svg (opened with ```svg) with one self-contained <svg> that has a viewBox and no scripts or external references.",
+  "- Math: $inline$ and $$display$$ LaTeX.",
+  "- Images: ![alt](https://...) only for image URLs you were given; never invent URLs.",
+  "Use these only when they help; plain prose is often best. JSON in fenced blocks must be valid.",
+].join("\n");
+
 export async function buildMessages(store: Store, instance: string, user: string, conversationId: string, current: string, personality = "", limits: ContextLimits = {}) {
   const maxInput = limits.inputTokens ?? 6000;
   const recent = limits.recentMessages ?? 20;

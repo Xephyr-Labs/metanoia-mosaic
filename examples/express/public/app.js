@@ -11,7 +11,7 @@ const assistant = mount(host, {
     accent: "#536d62",
     panel: "#ffffff",
     text: "#1c2024",
-    muted: "#727a80",
+    muted: "#60686e",
     userMessage: "#536d62",
     assistantMessage: "#f1f4f2",
     border: "#e3e7e9",

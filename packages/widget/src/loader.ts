@@ -1,4 +1,4 @@
-import { mount, type ConversationStore, type WidgetLabels, type WidgetOptions } from "./index.js";
+import { mount, type ConversationStore, type RichOptions, type WidgetLabels, type WidgetOptions } from "./index.js";
 
 const observed = ["endpoint", "name", "avatar-url", "greeting", "theme", "placement", "accent", "width", "height", "launcher", "locale", "dir", "credentials"];
 
@@ -8,12 +8,13 @@ class MetanoiaChatElement extends HTMLElement {
   private authHeaders?: WidgetOptions["headers"];
   private store?: ConversationStore;
   private localizedLabels?: WidgetLabels;
+  private richOptions?: RichOptions;
 
   connectedCallback() {
     // Values assigned before a deferred script upgrades the element otherwise
     // shadow the prototype setters and never reach mount().
     const properties = this as unknown as Record<string, unknown>;
-    for (const key of ["headers", "conversationStore", "labels"]) {
+    for (const key of ["headers", "conversationStore", "labels", "rich"]) {
       if (!Object.hasOwn(this, key)) continue;
       const value = properties[key];
       delete properties[key];
@@ -59,6 +60,10 @@ class MetanoiaChatElement extends HTMLElement {
     this.localizedLabels = value;
     if (this.instance) this.instance.update({ labels: value });
   }
+  set rich(value: RichOptions | undefined) {
+    this.richOptions = value;
+    if (this.instance) this.instance.update({ rich: value });
+  }
 
   private options(endpoint: string): WidgetOptions {
     const attr = (name: string) => this.getAttribute(name) ?? undefined;
@@ -83,6 +88,7 @@ class MetanoiaChatElement extends HTMLElement {
       dir: attr("dir") as WidgetOptions["dir"],
       headers: this.authHeaders,
       labels: this.localizedLabels,
+      rich: this.richOptions,
       credentials: attr("credentials") as RequestCredentials | undefined,
       conversationStore: this.store,
     };
