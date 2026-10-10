@@ -3,9 +3,12 @@ import { renderChart } from "./chart.js";
 import { deferred, load, mk, pending, type RenderContext, type RichOptions } from "./util.js";
 
 export const KATEX_URL="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.mjs";
+export const MERMAID_URL="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+type Mermaid={initialize(config:Record<string,unknown>):void;render(id:string,source:string):Promise<{svg:string}>};
+let diagrams=0;
 type Katex={renderToString(tex:string,options:Record<string,unknown>):string};
 // Fence tag -> the `rich` flag that enables it.
-export const flags:Record<string,keyof RichOptions>={math:"math",chart:"charts",choices:"choices"};
+export const flags:Record<string,keyof RichOptions>={math:"math",chart:"charts",choices:"choices",svg:"svg",mermaid:"diagrams"};
 
 export function renderBlock(lang:string,source:string,closed:boolean,ctx:RenderContext):Node{
  const flag=Object.hasOwn(flags,lang)?flags[lang]!:undefined,kind=flag&&ctx.rich[flag]!==false?lang:"";
@@ -14,6 +17,8 @@ export function renderBlock(lang:string,source:string,closed:boolean,ctx:RenderC
   if(kind==="chart")return renderChart(source);
   if(kind==="choices")return renderChoices(source,ctx);
   if(kind==="math")return math(source,true,ctx);
+  if(kind==="svg")return svgImage(source,ctx.label("illustration"),"illustration");
+  if(kind==="mermaid")return mermaid(source,ctx);
  }catch{return code(lang,source,ctx,true);}
  return code(lang,source,ctx);
 }
@@ -36,4 +41,24 @@ export function math(tex:string,display:boolean,ctx:RenderContext):Node{
   node.innerHTML=katex.renderToString(tex,{displayMode:display,throwOnError:false,trust:false,output:"mathml"});
   return node;
  },source,source());
+}
+
+// Image-mode SVG never runs scripts or fetches external resources, so model markup is safe without a sanitizer.
+export function svgImage(source:string,alt:string,cls:string){
+ const text=source.trim().replace(/^<\?xml[^>]*>\s*/i,"");
+ if(text.length>100_000||!/^<svg[\s>]/i.test(text))throw Error("svg");
+ const img=mk("img",cls) as HTMLImageElement;
+ img.alt=text.match(/<title[^>]*>([^<]{1,200})<\/title>/i)?.[1]?.trim()||alt;
+ img.src=`data:image/svg+xml;charset=utf-8,${encodeURIComponent(/^<svg[^>]*\bxmlns=/i.test(text)?text:text.replace(/^<svg/i,'<svg xmlns="http://www.w3.org/2000/svg"'))}`;
+ return img;
+}
+
+function mermaid(source:string,ctx:RenderContext){
+ const url=ctx.rich.mermaidUrl??MERMAID_URL;
+ return deferred(`${url}|${ctx.dark}|${source}`,async()=>{
+  const m=await load<Mermaid>(url);
+  m.initialize({startOnLoad:false,securityLevel:"strict",theme:ctx.dark?"dark":"default",suppressErrorRendering:true,htmlLabels:false,flowchart:{htmlLabels:false}});
+  const {svg}=await m.render(`omni-diagram-${++diagrams}`,source);
+  return svgImage(svg,ctx.label("diagram"),"diagram");
+ },()=>code("mermaid",source,ctx,true),pending(ctx));
 }

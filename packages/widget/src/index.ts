@@ -145,6 +145,8 @@ button:disabled{opacity:.6;cursor:wait}
 .msg.rich .choice[aria-pressed=true],.msg.rich .choice.chosen{background:var(--omni-accent);border-color:var(--omni-accent);color:#fff}
 .msg.rich .choices button:disabled{cursor:default;opacity:.55}.msg.rich .choice.chosen:disabled{opacity:1}
 .msg.rich .choice-send{margin-top:8px;min-height:34px;padding:0 14px;border:0;border-radius:10px;background:var(--omni-accent);color:#fff;font-size:12px;font-weight:650;cursor:pointer}
+.msg.rich img.illustration,.msg.rich img.diagram{display:block;max-width:100%;height:auto;margin-top:.65em;border-radius:9px}
+.msg.rich img.illustration{background:#fff;padding:6px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .msg.user{align-self:flex-end;margin-inline-start:auto;background:var(--omni-user-bg);color:#fff;border-radius:16px 5px 16px 16px}
 .sources{display:flex;flex-wrap:wrap;gap:7px;max-width:100%;font-size:11px;margin:0 0 2px 3px}

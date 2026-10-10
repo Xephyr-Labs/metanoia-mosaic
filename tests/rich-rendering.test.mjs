@@ -178,3 +178,27 @@ test('invalid choices fall back to code',async()=>{
  const host=setup();const widget=mount(host,{endpoint:'/api'});
  try{await widget.ready;await say(host,'```choices\n{"options":[]}\n```');assert.ok(last(host).querySelector('.code-block .render-note'));}finally{widget.destroy();}
 });
+test('svg block renders only as an image',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```svg\n<svg viewBox="0 0 10 10"><title>Dot</title><script>alert(1)</script><circle r="4"/></svg>\n```');
+  const msg=last(host),img=msg.querySelector('img.illustration');assert.equal(msg.querySelector('svg,script,circle'),null);assert.equal(img.alt,'Dot');
+  assert.ok(img.src.startsWith('data:image/svg+xml;charset=utf-8,'));assert.match(decodeURIComponent(img.src),/^data:image\/svg\+xml;charset=utf-8,<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox/);
+ }finally{widget.destroy();}
+});
+test('non-svg content in an svg block falls back to code',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```svg\n<img src=x onerror=alert(1)>\n```');assert.equal(last(host).querySelector('img'),null);assert.ok(last(host).querySelector('.code-block .render-note'));}finally{widget.destroy();}
+});
+test('mermaid blocks render through the lazy loader as an image',async()=>{
+ const mermaidUrl=moduleUrl('export default {initialize(){},async render(id,src){return {svg:"<svg xmlns=\\"http://www.w3.org/2000/svg\\"><text>"+src+"</text></svg>"}}}');
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{mermaidUrl}});
+ try{await widget.ready;await say(host,'```mermaid\ngraph TD; A-->B\n```');await settle();
+  const img=last(host).querySelector('img.diagram');assert.equal(img.alt,'Diagram');assert.match(decodeURIComponent(img.src),/graph TD; A-->B/);assert.equal(last(host).querySelector('.render-pending'),null);
+ }finally{widget.destroy();}
+});
+test('mermaid load failure falls back to code',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api',rich:{mermaidUrl:moduleUrl('throw new Error("blocked")')}});
+ try{await widget.ready;await say(host,'```mermaid\ngraph LR; X-->Y\n```');await settle();
+  const block=last(host).querySelector('.code-block');assert.equal(block.querySelector('.code-bar span').textContent,'mermaid');assert.ok(block.querySelector('.render-note'));
+ }finally{widget.destroy();}
+});
