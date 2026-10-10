@@ -95,6 +95,7 @@ button:disabled{opacity:.6;cursor:wait}
 .msg.rich{white-space:normal}
 .msg.rich p,.msg.rich li{white-space:pre-wrap;margin:0}
 .msg.rich p+p,.msg.rich p+ul,.msg.rich p+ol,.msg.rich ul+p,.msg.rich ol+p,.msg.rich pre+p,.msg.rich p+pre{margin-top:.65em}
+.msg.rich :is(.code-block,.table-wrap,blockquote,hr,img.inline-image,.math-display,pre)+:is(p,ul,ol,.code-block,.table-wrap,blockquote){margin-top:.65em}
 .msg.rich .heading{font-weight:680}
 .msg.rich ul,.msg.rich ol{margin:0;padding-inline-start:1.25em}
 .msg.rich li+li{margin-top:.3em}

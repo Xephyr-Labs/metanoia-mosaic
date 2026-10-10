@@ -74,3 +74,12 @@ test('math falls back to its source when KaTeX cannot load',async()=>{
   assert.equal(last(host).querySelector('code.math-source')?.textContent,'$e=mc^2$');
  }finally{widget.destroy();}
 });
+test('text after a code block keeps a top margin',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});const style=document.createElement('style');
+ try{await widget.ready;style.textContent=host.shadowRoot.querySelector('style').textContent;document.head.append(style);
+  const msg=document.createElement('div');msg.className='msg rich';msg.innerHTML='<div class="code-block"></div><p id="after"></p>';document.body.append(msg);
+  const after=msg.querySelector('#after');
+  const margins=[...style.sheet.cssRules].filter(rule=>rule.selectorText&&after.matches(rule.selectorText)).map(rule=>rule.style.getPropertyValue('margin-top')).filter(Boolean);
+  assert.equal(parseFloat(margins.at(-1)),.65);msg.remove();
+ }finally{style.remove();widget.destroy();}
+});
