@@ -9,6 +9,8 @@ export type Capabilities = {
   voiceOutput?: { enabled: boolean; baseUrl?: string; apiKey?: string; model?: string; voice?: string };
   /** Opt-in contextual follow-up prompts. Generates one additional short provider completion per turn. */
   suggestions?: { enabled: boolean; count?: number };
+  /** Tells the model it may answer with tables, charts, choices, Mermaid, SVG, and math. Defaults to enabled. */
+  richResponses?: { enabled: boolean };
   webSearch?: { enabled: boolean; engine?: "auto" | "native" | "exa" | "firecrawl" | "parallel" | "perplexity"; maxResults?: number; maxTotalResults?: number; maxUses?: number; allowedDomains?: string[]; excludedDomains?: string[] };
 };
 
@@ -55,5 +57,5 @@ export type ChatbotOptions = {
 };
 
 export type ChatbotEvent = { type: string; instanceId: string; userId?: string; at: string; data?: Record<string, unknown> };
-export type WidgetConfig = { branding: Required<Pick<Branding, "name" | "greeting" | "theme" | "placement" | "width" | "height">> & Branding; capabilities: { images: boolean; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number } };
+export type WidgetConfig = { branding: Required<Pick<Branding, "name" | "greeting" | "theme" | "placement" | "width" | "height">> & Branding; capabilities: { images: boolean; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; richResponses: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number } };
 export type Chatbot = { ready: Promise<void>; handle(request: Request): Promise<Response>; close(): Promise<void> };
