@@ -55,13 +55,13 @@ test('a rejected preference save is shown as failure rather than saved',async()=
  const host=setup();const fetcher=globalThis.fetch;
  globalThis.fetch=async(input,init)=>String(input).endsWith('/preferences')?Response.json(init?.method==='PUT'?{error:{message:'Expired token'}}:{preferences:{}},{status:init?.method==='PUT'?401:200}):fetcher(input,init);
  const widget=mount(host,{endpoint:'/api'});
- try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const save=host.shadowRoot.querySelectorAll('.settings .action')[0];save.click();await tick();assert.equal(save.textContent,'Unable to save. Try again.');}finally{widget.destroy();}
+ try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const save=host.shadowRoot.querySelectorAll('.settings .action')[0];save.click();await tick();assert.equal(host.shadowRoot.querySelector('.settings .field-error')?.textContent,'Unable to save. Try again.');assert.equal(save.textContent,'Save preferences');}finally{widget.destroy();}
 });
 test('a rejected memory deletion keeps the memory visible',async()=>{
  const host=setup();const fetcher=globalThis.fetch;
  globalThis.fetch=async(input,init)=>String(input).endsWith('/memories')?Response.json({memories:[{id:'memory',content:'Important detail'}]}):init?.method==='DELETE'?Response.json({error:{message:'Expired token'}},{status:401}):fetcher(input,init);
  const widget=mount(host,{endpoint:'/api'});
- try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const row=host.shadowRoot.querySelector('.memory');row.querySelectorAll('button')[1].click();await tick();assert.equal(row.isConnected,true);assert.equal(row.querySelectorAll('button')[1].textContent,'Unable to remove. Try again.');}finally{widget.destroy();}
+ try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const row=host.shadowRoot.querySelector('.memory');row.querySelectorAll('button')[1].click();await tick();assert.equal(row.isConnected,true);assert.equal(row.querySelector('.field-error')?.textContent,'Unable to remove. Try again.');}finally{widget.destroy();}
 });
 test('a stream that ends without done or error is reported as interrupted',async()=>{
  const host=setup({pending:true});const widget=mount(host,{endpoint:'/api'});
@@ -79,5 +79,23 @@ test('assistant Markdown renders as safe DOM nodes',async()=>{
   const answer=host.shadowRoot.querySelector('.msg.rich');
   assert.equal(answer.querySelectorAll('ol li').length,2);assert.equal(answer.querySelector('strong').textContent,'Settings');assert.equal(answer.querySelector('code').textContent,'Invite');
   assert.equal(answer.querySelector('a').getAttribute('href'),'https://example.com');assert.equal(answer.querySelector('img'),null);assert.match(answer.textContent,/<img src=x/);
+ }finally{widget.destroy();}
+});
+test('send becomes stop while streaming and stopping keeps the partial reply',async()=>{
+ const host=setup({pending:true});const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;send(host);await tick();const button=host.shadowRoot.querySelector('.send-button');assert.equal(button.textContent,'Stop');
+  streamController.enqueue(new TextEncoder().encode('event: delta\ndata: {"text":"Partial"}\n\n'));await tick();
+  host.shadowRoot.querySelector('form').dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await tick();await tick();
+  assert.equal(host.shadowRoot.querySelector('.status').textContent,'Response stopped.');assert.match(host.shadowRoot.querySelector('.msg.rich:last-of-type')?.textContent??host.shadowRoot.querySelector('.messages').textContent,/Partial/);assert.equal(button.textContent,'Send');
+ }finally{widget.destroy();}
+});
+test('a failed send restores the draft and offers retry',async()=>{
+ const host=setup();const fetcher=globalThis.fetch;let fail=true;
+ globalThis.fetch=async(input,init)=>String(input).endsWith('/messages')&&fail?Response.json({error:{message:'down'}},{status:502}):fetcher(input,init);
+ const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;send(host,'Where are invoices?');await tick();await tick();const root=host.shadowRoot;
+  assert.equal(root.querySelector('textarea').value,'Where are invoices?');assert.ok(root.querySelector('.msg.user.failed'));assert.equal(root.querySelectorAll('.msg.rich').length,0);assert.ok(root.querySelector('.status').classList.contains('error'));
+  fail=false;root.querySelector('.failed-note button').click();await tick();await tick();
+  assert.equal(root.querySelector('.msg.user.failed'),null);assert.equal(root.querySelectorAll('.msg.user').length,1);
  }finally{widget.destroy();}
 });

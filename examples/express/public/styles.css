@@ -1,4 +1,4 @@
-:root{color-scheme:light;--paper:#f6f7f8;--ink:#1c2024;--muted:#727a80;--line:#e3e7e9;--accent:#536d62;--font-body:"DM Sans",ui-sans-serif,system-ui,sans-serif;--font-display:Manrope,"DM Sans",sans-serif}
+:root{color-scheme:light;--paper:#f6f7f8;--ink:#1c2024;--muted:#60686e;--line:#e3e7e9;--accent:#536d62;--font-body:"DM Sans",ui-sans-serif,system-ui,sans-serif;--font-display:Manrope,"DM Sans",sans-serif}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;overflow-x:clip}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased}

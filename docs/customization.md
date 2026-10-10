@@ -27,7 +27,7 @@ mount(document.querySelector("#assistant")!, {
 });
 ```
 
-The launcher supports `bubble` and `button`. Colors accept CSS color values; unsupported values fall back to the theme defaults. The widget caps requested dimensions to keep it usable on small screens.
+The launcher supports `bubble` and `button`. Colors accept CSS color values; unsupported values fall back to the theme defaults. With `theme: "system"`, `colors` style the light theme only; when the visitor prefers dark, the built-in dark palette is used with your `accent`, lightened for links and focus rings so they stay readable. Set `theme: "dark"` to apply `colors` to a dark panel you design yourself. The widget caps requested dimensions to keep it usable on small screens.
 
 ## Conversation-aware suggestion pills
 
