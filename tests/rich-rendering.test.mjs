@@ -138,3 +138,43 @@ test('disabled charts render as code',async()=>{
   assert.equal(last(host).querySelector('figure.chart'),null);assert.equal(last(host).querySelector('.code-block .render-note'),null);assert.ok(last(host).querySelector('.code-block'));
  }finally{widget.destroy();}
 });
+
+const choices='```choices\n{"question":"Which plan?","options":["Starter",{"label":"Pro","value":"I want Pro"}]}\n```';
+test('a choice click sends its value and disables the group',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'Pick one:\n'+choices);
+  const group=last(host).querySelector('.choices');assert.equal(group.getAttribute('aria-label'),'Which plan?');
+  const buttons=[...group.querySelectorAll('button.choice')];assert.deepEqual(buttons.map(b=>[b.textContent,b.disabled]),[['Starter',false],['Pro',false]]);
+  buttons[1].click();await settle();
+  assert.deepEqual(posts,['Hi','I want Pro']);assert.ok(buttons.every(b=>b.disabled));assert.ok(buttons[1].classList.contains('chosen'));
+ }finally{widget.destroy();}
+});
+test('typing a new message disables earlier choices',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,choices);const first=last(host).querySelector('button.choice');await say(host,'ok','Something else');
+  assert.equal(first.disabled,true);assert.equal(first.classList.contains('chosen'),false);
+ }finally{widget.destroy();}
+});
+test('choices stay disabled until the reply finishes',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'pending');emit('delta',{text:choices});await settle();
+  const button=last(host).querySelector('button.choice');assert.equal(button.disabled,true);button.click();await settle();assert.deepEqual(posts,['Hi']);assert.equal(button.classList.contains('chosen'),false);
+ }finally{widget.destroy();}
+});
+test('multi-select choices send the picked values together',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```choices\n{"options":["A","B","C"],"multi":true}\n```');
+  const group=last(host).querySelector('.choices'),[a,,c]=group.querySelectorAll('button.choice'),sendButton=group.querySelector('button.choice-send');
+  assert.equal(sendButton.disabled,true);a.click();c.click();assert.equal(a.getAttribute('aria-pressed'),'true');assert.equal(sendButton.disabled,false);
+  sendButton.click();await settle();assert.equal(posts.at(-1),'A, C');
+ }finally{widget.destroy();}
+});
+test('choices loaded from history are read-only',async()=>{
+ const host=setup({history:[{id:'1',role:'user',content:'Hi',status:'complete'},{id:'2',role:'assistant',content:choices,status:'complete'}]});
+ const widget=mount(host,{endpoint:'/api',conversationStore:{load:()=>'chat',save(){}}});
+ try{await widget.ready;await settle();const buttons=[...last(host).querySelectorAll('button.choice')];assert.equal(buttons.length,2);assert.ok(buttons.every(b=>b.disabled));}finally{widget.destroy();}
+});
+test('invalid choices fall back to code',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,'```choices\n{"options":[]}\n```');assert.ok(last(host).querySelector('.code-block .render-note'));}finally{widget.destroy();}
+});

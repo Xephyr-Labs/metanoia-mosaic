@@ -1,16 +1,18 @@
+import { renderChoices } from "./choices.js";
 import { renderChart } from "./chart.js";
 import { deferred, load, mk, pending, type RenderContext, type RichOptions } from "./util.js";
 
 export const KATEX_URL="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.mjs";
 type Katex={renderToString(tex:string,options:Record<string,unknown>):string};
 // Fence tag -> the `rich` flag that enables it.
-export const flags:Record<string,keyof RichOptions>={math:"math",chart:"charts"};
+export const flags:Record<string,keyof RichOptions>={math:"math",chart:"charts",choices:"choices"};
 
 export function renderBlock(lang:string,source:string,closed:boolean,ctx:RenderContext):Node{
  const flag=Object.hasOwn(flags,lang)?flags[lang]!:undefined,kind=flag&&ctx.rich[flag]!==false?lang:"";
  if(kind&&!closed&&ctx.streaming)return pending(ctx);
  try{
   if(kind==="chart")return renderChart(source);
+  if(kind==="choices")return renderChoices(source,ctx);
   if(kind==="math")return math(source,true,ctx);
  }catch{return code(lang,source,ctx,true);}
  return code(lang,source,ctx);
