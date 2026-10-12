@@ -45,13 +45,27 @@ Most chat widgets send your users' conversations to someone else's backend. Mosa
 
 Requires Node.js 20 or newer.
 
+**Start a new project.** This creates an Express server with the widget already on its page:
+
+```sh
+npm create metanoia-mosaic
+cd my-assistant
+cp .env.example .env   # set your provider URL, key, and model
+npm install
+npm run dev
+```
+
+Chat stays locked until you connect `src/auth.js` to your app's sign-in. It returns no user by default, so nobody is let in by accident.
+
+**Run the demo from this repository.** The example app includes a mock mode, so you can try it without an API key:
+
 ```sh
 git clone https://github.com/Xephyr-Labs/metanoia-mosaic.git
 cd metanoia-mosaic
 npm ci && npm run build
 ```
 
-**Try it without an API key.** Mock mode runs the real widget, HTTP API, streaming, and storage, with clearly labeled synthetic replies:
+Mock mode runs the real widget, HTTP API, streaming, and storage, with clearly labeled synthetic replies:
 
 ```sh
 CHATBOT_DEMO_MODE=true npm run start --workspace @metanoialabs/example-express
@@ -76,6 +90,10 @@ npm run dev --workspace @metanoialabs/example-express
 ## Add it to your app
 
 ### 1. Mount the backend
+
+```sh
+npm install @metanoialabs/chatbot
+```
 
 ```js
 import express from "express";
@@ -108,7 +126,7 @@ For Next.js, Hono, Fastify, or any server that speaks Web `Request`/`Response`, 
 
 ### 2. Add the interface
 
-Pick whichever fits your frontend:
+Pick whichever fits your frontend: `npm install @metanoialabs/widget`, `@metanoialabs/react`, or `@metanoialabs/client`. Plain HTML needs no install.
 
 <table>
 <tr><th>Plain HTML</th><th>React</th></tr>

@@ -27,7 +27,7 @@ npm create metanoia-mosaic -- --name my-assistant --template express --yes
 | `--template` | `express` | Starter template. Only `express` is available for now |
 | `--yes`, `-y` | | Skip the prompts and use the defaults |
 
-Before you deploy, replace the placeholder resolver in `src/auth.js` with one that reads your app's real login session.
+Chat stays locked until you connect `src/auth.js` to your app's sign-in. It returns no user by default, so nobody is let in by accident.
 
 Requires Node.js 20 or newer.
 

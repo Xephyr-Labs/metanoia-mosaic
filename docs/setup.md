@@ -12,7 +12,7 @@ npm run build
 npm run typecheck
 ```
 
-The build generates the `dist/` files consumed by the packages. Run the local generator with `npm run create -- --name my-assistant --yes`. Its generated dependencies require published packages or local tarballs; the Express workspace example runs directly from this checkout. When published, scaffold an Express starter with `npm create metanoia-mosaic`. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
+The build generates the `dist/` files consumed by the packages. To start a new project from the published packages instead, run `npm create metanoia-mosaic`. The Express workspace example runs directly from this checkout. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
 
 ```sh
 CHATBOT_DEMO_MODE=true npm run start --workspace @metanoialabs/example-express
@@ -108,7 +108,7 @@ The custom element accepts `credentials`, `locale`, and `dir` attributes, plus a
 
 ## Add the web widget
 
-Install or link `@metanoialabs/widget` into the frontend build, then mount it once on a page:
+Run `npm install @metanoialabs/widget` in the frontend, then mount it once on a page:
 
 ```js
 import { mount } from "@metanoialabs/widget";
