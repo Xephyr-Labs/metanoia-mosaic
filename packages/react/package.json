@@ -1,6 +1,6 @@
 {
   "name": "@metanoialabs/react",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -22,7 +22,7 @@
     }
   },
   "dependencies": {
-    "@metanoialabs/widget": "^0.2.0"
+    "@metanoialabs/widget": "^0.2.1"
   },
   "license": "MIT",
   "repository": {

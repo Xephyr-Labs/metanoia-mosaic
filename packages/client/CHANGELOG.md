@@ -1,5 +1,11 @@
 # @metanoia/client
 
+## 0.2.1
+
+### Patch Changes
+
+- 466d156: Add a README to each package.
+
 ## 0.2.0
 
 ### Minor Changes
