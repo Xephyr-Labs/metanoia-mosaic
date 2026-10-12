@@ -2,12 +2,27 @@
   "name": "create-metanoia-mosaic",
   "version": "0.2.0",
   "type": "module",
-  "bin": { "create-metanoia-mosaic": "./dist/cli.js" },
-  "files": ["dist"],
-  "scripts": { "build": "node scripts/build.js", "prepack": "npm run build" },
+  "bin": {
+    "create-metanoia-mosaic": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "prepack": "npm run build"
+  },
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/Xephyr-Labs/metanoia-mosaic.git", "directory": "packages/create-metanoia-mosaic" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xephyr-Labs/metanoia-mosaic.git",
+    "directory": "packages/create-metanoia-mosaic"
+  },
   "homepage": "https://github.com/Xephyr-Labs/metanoia-mosaic#readme",
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }

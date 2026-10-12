@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@metanoialabs/chatbot": "0.2.0",
-    "express": "^5.1.0",
-    "@metanoialabs/client": "0.2.0"
-  }
+    "@metanoialabs/client": "0.2.0",
+    "express": "^5.1.0"
+  },
+  "version": "0.0.0"
 }
