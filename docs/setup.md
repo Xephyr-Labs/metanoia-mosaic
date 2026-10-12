@@ -1,6 +1,6 @@
 # Setup and integration
 
-Metanoia Mosaic is a Node.js workspace containing a server package and optional web clients. Node.js 20 or newer is required. The packages are prepared for public npm releases. Until the first release is published, use the workspace and local examples.
+Metanoia Mosaic is a Node.js workspace containing a server package and optional web clients. Node.js 20 or newer is required. The packages are published on npm; this page also covers working from the repository.
 
 ## Get the workspace
 
@@ -82,7 +82,7 @@ The Express adapter receives requests below `/assistant` and serves routes such 
 
 ## Add the widget without a framework
 
-After the first npm release, a plain HTML page can load the bundled custom element directly:
+A plain HTML page can load the bundled custom element directly:
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@metanoialabs/widget@0/dist/loader.js" defer></script>
@@ -158,4 +158,4 @@ Open `http://localhost:3000`. See [the example guide](../examples/express/README
 
 ## Publish packages
 
-The GitHub release workflow uses Changesets 3 and `changesets/action@v2`. Add a changeset with `npm run changeset`, merge the generated version pull request, and the workflow publishes the changed packages. Configure the repository `NPM_TOKEN` secret with publish access to the `@metanoia` scope and `create-metanoia-mosaic`; the workflow passes it to npm as `NODE_AUTH_TOKEN`. Enable GitHub Actions to create release commits and pull requests. The CLI build takes backend/widget versions from the workspace, so generated starters always target the versions being published.
+The GitHub release workflow uses Changesets 3 and `changesets/action@v2`. Add a changeset with `npm run changeset`, merge the generated version pull request, and the workflow publishes the changed packages. Publishing uses npm trusted publishing: each package has `Xephyr-Labs/metanoia-mosaic` and `release.yml` set as its trusted publisher on npmjs.com, so no npm token is stored. Enable GitHub Actions to create release commits and pull requests. The CLI build takes backend/widget versions from the workspace, so generated starters always target the versions being published.

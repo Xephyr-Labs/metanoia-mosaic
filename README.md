@@ -255,7 +255,7 @@ Each request is tied to the user your resolver returns. Conversations, media, an
 | [`@metanoialabs/client`](packages/client) | Typed headless client for custom web, React Native, and Expo interfaces |
 | [`create-metanoia-mosaic`](packages/create-metanoia-mosaic) | Generates an Express starter project |
 
-The packages haven't had their first npm release yet. Until then, use this workspace and the [local setup](docs/setup.md#get-the-workspace). After release, `npm create metanoia-mosaic` will scaffold a starter.
+Scaffold a starter with `npm create metanoia-mosaic`.
 
 ## Documentation
 
