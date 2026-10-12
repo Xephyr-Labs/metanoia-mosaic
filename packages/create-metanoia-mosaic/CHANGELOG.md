@@ -1,5 +1,11 @@
 # create-metanoia-mosaic
 
+## 0.2.2
+
+### Patch Changes
+
+- 5cfbeb3: Clarify that chat stays locked until `src/auth.js` is connected to the app's sign-in.
+
 ## 0.2.1
 
 ### Patch Changes
