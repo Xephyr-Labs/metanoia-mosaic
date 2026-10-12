@@ -1,5 +1,13 @@
 # @metanoia/react
 
+## 0.2.1
+
+### Patch Changes
+
+- 466d156: Add a README to each package.
+- Updated dependencies [466d156]
+  - @metanoialabs/widget@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
