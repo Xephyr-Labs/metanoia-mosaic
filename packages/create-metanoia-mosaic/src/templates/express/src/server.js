@@ -1,11 +1,11 @@
 import express from "express";
 import { createRequire } from "node:module";
-import { createChatbot, expressHandler } from "@metanoia/chatbot";
+import { createChatbot, expressHandler } from "@metanoialabs/chatbot";
 import { getAuthenticatedUser } from "./auth.js";
 
 const app = express();
 const require = createRequire(import.meta.url);
-const widgetLoader = require.resolve("@metanoia/widget/loader");
+const widgetLoader = require.resolve("@metanoialabs/widget/loader");
 const chatbot = createChatbot({
   provider: {
     baseUrl: process.env.AI_BASE_URL,

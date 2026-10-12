@@ -1,5 +1,5 @@
 import { createElement, useEffect, useRef } from "react";
-import { mount } from "@metanoia/widget";
+import { mount } from "@metanoialabs/widget";
 
 export function OmniChatbot(props) {
   const host = useRef(null);

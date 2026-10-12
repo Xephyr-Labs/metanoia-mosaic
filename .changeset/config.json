@@ -4,10 +4,10 @@
   "commit": false,
   "fixed": [
     [
-      "@metanoia/chatbot",
-      "@metanoia/client",
-      "@metanoia/widget",
-      "@metanoia/react"
+      "@metanoialabs/chatbot",
+      "@metanoialabs/client",
+      "@metanoialabs/widget",
+      "@metanoialabs/react"
     ]
   ],
   "access": "public",

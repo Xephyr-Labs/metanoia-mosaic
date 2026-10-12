@@ -54,7 +54,7 @@ npm ci && npm run build
 **Try it without an API key.** Mock mode runs the real widget, HTTP API, streaming, and storage, with clearly labeled synthetic replies:
 
 ```sh
-CHATBOT_DEMO_MODE=true npm run start --workspace @metanoia/example-express
+CHATBOT_DEMO_MODE=true npm run start --workspace @metanoialabs/example-express
 # open http://localhost:3000
 ```
 
@@ -68,7 +68,7 @@ OPENAI_COMPATIBILITY=deepinfra
 ```
 
 ```sh
-npm run dev --workspace @metanoia/example-express
+npm run dev --workspace @metanoialabs/example-express
 ```
 
 > The example uses anonymous browser sessions for local testing only. Don't expose it to the internet. Your app should supply a real `identity` resolver, as shown below.
@@ -79,7 +79,7 @@ npm run dev --workspace @metanoia/example-express
 
 ```js
 import express from "express";
-import { createChatbot, expressHandler } from "@metanoia/chatbot";
+import { createChatbot, expressHandler } from "@metanoialabs/chatbot";
 
 const chatbot = createChatbot({
   provider: {
@@ -115,7 +115,7 @@ Pick whichever fits your frontend:
 <tr><td>
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0/dist/loader.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@metanoialabs/widget@0/dist/loader.js" defer></script>
 <metanoia-chat
   endpoint="/assistant"
   name="Mira"
@@ -126,7 +126,7 @@ Pick whichever fits your frontend:
 </td><td>
 
 ```jsx
-import { OmniChatbot } from "@metanoia/react";
+import { OmniChatbot } from "@metanoialabs/react";
 
 export function Assistant() {
   return <OmniChatbot endpoint="/assistant"
@@ -139,7 +139,7 @@ export function Assistant() {
 <tr><td>
 
 ```js
-import { mount } from "@metanoia/widget";
+import { mount } from "@metanoialabs/widget";
 
 const host = document.body.appendChild(document.createElement("div"));
 const assistant = mount(host, {
@@ -152,7 +152,7 @@ assistant.open();
 </td><td>
 
 ```js
-import { createChatbotClient } from "@metanoia/client";
+import { createChatbotClient } from "@metanoialabs/client";
 
 const bot = createChatbotClient({ endpoint });
 const { conversation } = await bot.createConversation();
@@ -219,7 +219,7 @@ Voice uses its own OpenAI-compatible `audio/transcriptions` and `audio/speech` e
 ```mermaid
 flowchart LR
   subgraph browser["Browser"]
-    W["Widget · React · custom UI<br/>(@metanoia/client)"]
+    W["Widget · React · custom UI<br/>(@metanoialabs/client)"]
   end
   subgraph server["Your server"]
     H["Mosaic handler<br/>/assistant/*"]
@@ -249,10 +249,10 @@ Each request is tied to the user your resolver returns. Conversations, media, an
 
 | Package | What it is |
 | --- | --- |
-| [`@metanoia/chatbot`](packages/core) | Node.js backend: streaming, tools, memory, storage, Express and Fetch adapters |
-| [`@metanoia/widget`](packages/widget) | Framework-free Shadow DOM widget plus the `<metanoia-chat>` custom element |
-| [`@metanoia/react`](packages/react) | React wrapper around the widget |
-| [`@metanoia/client`](packages/client) | Typed headless client for custom web, React Native, and Expo interfaces |
+| [`@metanoialabs/chatbot`](packages/core) | Node.js backend: streaming, tools, memory, storage, Express and Fetch adapters |
+| [`@metanoialabs/widget`](packages/widget) | Framework-free Shadow DOM widget plus the `<metanoia-chat>` custom element |
+| [`@metanoialabs/react`](packages/react) | React wrapper around the widget |
+| [`@metanoialabs/client`](packages/client) | Typed headless client for custom web, React Native, and Expo interfaces |
 | [`create-metanoia-mosaic`](packages/create-metanoia-mosaic) | Generates an Express starter project |
 
 The packages haven't had their first npm release yet. Until then, use this workspace and the [local setup](docs/setup.md#get-the-workspace). After release, `npm create metanoia-mosaic` will scaffold a starter.

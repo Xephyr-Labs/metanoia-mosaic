@@ -1,10 +1,10 @@
 # Next.js App Router
 
-Install `@metanoia/chatbot`, then create one server-side instance in a Node runtime module. Keep credentials in server environment variables and resolve the user through your auth library.
+Install `@metanoialabs/chatbot`, then create one server-side instance in a Node runtime module. Keep credentials in server environment variables and resolve the user through your auth library.
 
 ```ts
 // app/api/assistant/[...path]/route.ts
-import { createChatbot, createChatbotFetchHandler } from "@metanoia/chatbot";
+import { createChatbot, createChatbotFetchHandler } from "@metanoialabs/chatbot";
 
 export const runtime = "nodejs";
 

@@ -6,7 +6,7 @@ Register chatbot routes in an encapsulated Fastify plugin. Its pass-through pars
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { createChatbot, createChatbotFetchHandler } from "@metanoia/chatbot";
+import { createChatbot, createChatbotFetchHandler } from "@metanoialabs/chatbot";
 
 const chatbot = createChatbot({
   provider: { baseUrl, apiKey, model },
@@ -48,4 +48,4 @@ fastify.register(async assistant => {
 });
 ```
 
-Keep body-consuming hooks and multipart plugins scoped to the host application's other routes. Stop chatbot work with `await chatbot.close()` before awaiting `fastify.close()` so active SSE responses can finish during shutdown. The Express starter uses `expressHandler` exported from `@metanoia/chatbot`.
+Keep body-consuming hooks and multipart plugins scoped to the host application's other routes. Stop chatbot work with `await chatbot.close()` before awaiting `fastify.close()` so active SSE responses can finish during shutdown. The Express starter uses `expressHandler` exported from `@metanoialabs/chatbot`.

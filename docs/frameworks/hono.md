@@ -4,7 +4,7 @@ The Hono adapter uses its standard Fetch request and response objects with Node 
 
 ```ts
 import { Hono } from "hono";
-import { createChatbot, createChatbotFetchHandler } from "@metanoia/chatbot";
+import { createChatbot, createChatbotFetchHandler } from "@metanoialabs/chatbot";
 
 const chatbot = createChatbot({
   provider: { baseUrl, apiKey, model },

@@ -44,7 +44,7 @@ async function fixture({ denied = false, pickerGate } = {}) {
   globalThis.fetch = makeFetch(false);
   const modules = {
     react: React, 'react/jsx-runtime': jsxRuntime, 'react-native': native,
-    '@metanoia/client': { createChatbotClient },
+    '@metanoialabs/client': { createChatbotClient },
     'expo/fetch': { fetch: makeFetch(true) },
     'expo-file-system': { File: class extends Blob { constructor() { super(['image-bytes'], { type: 'image/png' }); this.name = 'photo.png'; } } },
     './auth': { getFreshAccessToken: async () => 'verified-token' },

@@ -20,10 +20,10 @@ For a local demo only, `anonymous: true` issues an opaque HTTP-only browser cook
 
 ## Web and mobile clients
 
-The backend is a transport-neutral HTTP API; the bundled Shadow DOM and React packages are web UIs only. For a custom web UI, React Native, or another mobile application, use `@metanoia/client` for typed conversation, preferences, memory, media, voice, and streaming methods:
+The backend is a transport-neutral HTTP API; the bundled Shadow DOM and React packages are web UIs only. For a custom web UI, React Native, or another mobile application, use `@metanoialabs/client` for typed conversation, preferences, memory, media, voice, and streaming methods:
 
 ```ts
-import { createChatbotClient } from "@metanoia/client";
+import { createChatbotClient } from "@metanoialabs/client";
 
 const chatbot = createChatbotClient({
   endpoint: "https://api.example.com/assistant",

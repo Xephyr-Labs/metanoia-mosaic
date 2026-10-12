@@ -43,7 +43,7 @@ test('packed starter follows backend and widget versions after a release bump', 
   const packages = path.join(dir, 'packages');
   const generator = path.join(packages, 'create-metanoia-mosaic');
   await cp(path.join(root, 'packages/create-metanoia-mosaic'), generator, { recursive: true });
-  for (const [folder, name, version] of [['core', '@metanoia/chatbot', '0.2.0'], ['widget', '@metanoia/widget', '0.3.0']]) {
+  for (const [folder, name, version] of [['core', '@metanoialabs/chatbot', '0.2.0'], ['widget', '@metanoialabs/widget', '0.3.0']]) {
     await mkdir(path.join(packages, folder), { recursive: true });
     await writeFile(path.join(packages, folder, 'package.json'), JSON.stringify({ name, version }));
   }
@@ -51,8 +51,8 @@ test('packed starter follows backend and widget versions after a release bump', 
   const pkg = JSON.parse(await readFile(path.join(generator, 'package.json'), 'utf8'));
   await run(process.execPath, [path.join(generator, pkg.bin['create-metanoia-mosaic']), '--name', 'app', '--template', 'express', '--yes'], { cwd: dir });
   const app = JSON.parse(await readFile(path.join(dir, 'app/package.json'), 'utf8'));
-  assert.equal(app.dependencies['@metanoia/chatbot'], '^0.2.0');
-  assert.equal(app.dependencies['@metanoia/widget'], '^0.3.0');
+  assert.equal(app.dependencies['@metanoialabs/chatbot'], '^0.2.0');
+  assert.equal(app.dependencies['@metanoialabs/widget'], '^0.3.0');
 }));
 
 test('generated Express starter shuts down while an SSE reply is still active', () => temporary(async dir => {

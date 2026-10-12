@@ -1,5 +1,5 @@
 import express from "express";
-import { createChatbot, expressHandler } from "@metanoia/chatbot";
+import { createChatbot, expressHandler } from "@metanoialabs/chatbot";
 import { fileURLToPath } from "node:url";
 import { networkInterfaces } from "node:os";
 import path from "node:path";

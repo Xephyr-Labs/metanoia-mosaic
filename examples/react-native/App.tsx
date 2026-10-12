@@ -3,7 +3,7 @@ import { Button, ScrollView, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { File } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
-import { createChatbotClient } from "@metanoia/client";
+import { createChatbotClient } from "@metanoialabs/client";
 import { getFreshAccessToken } from "./auth";
 
 const endpoint = process.env.EXPO_PUBLIC_CHATBOT_URL!;

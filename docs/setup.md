@@ -15,7 +15,7 @@ npm run typecheck
 The build generates the `dist/` files consumed by the packages. Run the local generator with `npm run create -- --name my-assistant --yes`. Its generated dependencies require published packages or local tarballs; the Express workspace example runs directly from this checkout. When published, scaffold an Express starter with `npm create metanoia-mosaic`. `npm run dev:example` starts the Express demo after its `.env` is configured. To preview it without a provider key, use mock mode:
 
 ```sh
-CHATBOT_DEMO_MODE=true npm run start --workspace @metanoia/example-express
+CHATBOT_DEMO_MODE=true npm run start --workspace @metanoialabs/example-express
 ```
 
 Mock replies are synthetic. The demo enables anonymous identity and is intended for local development only.
@@ -26,7 +26,7 @@ Create the chatbot on your server and resolve identity from the application's au
 
 ```js
 import express from "express";
-import { createChatbot, expressHandler } from "@metanoia/chatbot";
+import { createChatbot, expressHandler } from "@metanoialabs/chatbot";
 
 const app = express();
 const chatbot = createChatbot({
@@ -85,7 +85,7 @@ The Express adapter receives requests below `/assistant` and serves routes such 
 After the first npm release, a plain HTML page can load the bundled custom element directly:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@metanoia/widget@0/dist/loader.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@metanoialabs/widget@0/dist/loader.js" defer></script>
 <metanoia-chat endpoint="/assistant" name="Mira" avatar-url="/assistant.svg" theme="system"></metanoia-chat>
 ```
 
@@ -108,10 +108,10 @@ The custom element accepts `credentials`, `locale`, and `dir` attributes, plus a
 
 ## Add the web widget
 
-Install or link `@metanoia/widget` into the frontend build, then mount it once on a page:
+Install or link `@metanoialabs/widget` into the frontend build, then mount it once on a page:
 
 ```js
-import { mount } from "@metanoia/widget";
+import { mount } from "@metanoialabs/widget";
 
 const assistant = mount(document.querySelector("#assistant"), {
   endpoint: "/assistant",
@@ -126,7 +126,7 @@ await assistant.ready;
 
 Pass branding and style through `mount` or the server's `branding` configuration. `WidgetOptions.labels` replaces built-in UI text; `locale` sets the assistant element language and `dir` supports left-to-right, right-to-left, or locale-detected direction. The widget supports accessible names, keyboard focus, escape-to-close, and live response announcements. The widget uses Shadow DOM so its styles stay isolated from the host page. See [customization](customization.md) for all options and suggestion-pill behavior.
 
-For framework-specific server examples, see the [Next.js](frameworks/nextjs.md), [Hono](frameworks/hono.md), and [Fastify](frameworks/fastify.md) recipes. For native UI, start with the [React Native / Expo example](../examples/react-native/README.md). For React web UI, use `@metanoia/react`. For a custom web or mobile interface, use `@metanoia/client` to call the same HTTP API and consume its streamed events. Mobile clients must provide authenticated headers and a Fetch implementation that supports readable streaming for incremental SSE.
+For framework-specific server examples, see the [Next.js](frameworks/nextjs.md), [Hono](frameworks/hono.md), and [Fastify](frameworks/fastify.md) recipes. For native UI, start with the [React Native / Expo example](../examples/react-native/README.md). For React web UI, use `@metanoialabs/react`. For a custom web or mobile interface, use `@metanoialabs/client` to call the same HTTP API and consume its streamed events. Mobile clients must provide authenticated headers and a Fetch implementation that supports readable streaming for incremental SSE.
 
 ## Choose storage and capabilities
 
@@ -145,13 +145,13 @@ Image input, voice input, and voice output are separate opt-ins under `capabilit
 ```sh
 npm run build
 npm run typecheck
-npm run smoke --workspace @metanoia/example-express
+npm run smoke --workspace @metanoialabs/example-express
 ```
 
 The Express example includes a configured demo UI and a mocked provider mode. For a real provider, copy `examples/express/.env.example` to `.env`, fill in provider settings, and run:
 
 ```sh
-npm run dev --workspace @metanoia/example-express
+npm run dev --workspace @metanoialabs/example-express
 ```
 
 Open `http://localhost:3000`. See [the example guide](../examples/express/README.md) for network access and deployment notes.

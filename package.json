@@ -10,7 +10,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "dev:example": "npm run dev -w @metanoia/example-express",
+    "dev:example": "npm run dev -w @metanoialabs/example-express",
     "clean": "rm -rf packages/*/dist examples/*/dist",
     "test": "npm run build && node --test tests/*.test.mjs",
     "changeset": "changeset",

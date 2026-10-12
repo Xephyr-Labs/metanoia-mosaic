@@ -4,8 +4,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createChatbot, expressHandler } from "@metanoia/chatbot";
-import { createChatbotClient } from "@metanoia/client";
+import { createChatbot, expressHandler } from "@metanoialabs/chatbot";
+import { createChatbotClient } from "@metanoialabs/client";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temp = await mkdtemp(path.join(tmpdir(), "metanoia-chat-smoke-"));

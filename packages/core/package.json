@@ -1,5 +1,5 @@
 {
-  "name": "@metanoia/chatbot",
+  "name": "@metanoialabs/chatbot",
   "version": "0.2.0",
   "type": "module",
   "main": "./dist/index.js",
