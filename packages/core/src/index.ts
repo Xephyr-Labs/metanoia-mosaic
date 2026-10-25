@@ -4,7 +4,7 @@ import type { Store } from "./storage/interface.js";
 import { validateOptions } from "./config.js";
 import { ChatbotError, errorResponse } from "./errors.js";
 import { buildMessages, estimateTokens, richResponseGuide } from "./context.js";
-import type { Chatbot, ChatbotEvent, ChatbotOptions, ChatbotTool, UserIdentity, WidgetConfig } from "./types.js";
+import type { Chatbot, ChatbotEvent, ChatbotOptions, ChatbotTool, InputGuardResult, UserIdentity, WidgetConfig } from "./types.js";
 import { inspectImage } from "./media.js";
 import { executeTool, parseToolArguments, providerTools } from "./tools.js";
 
@@ -171,16 +171,8 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
         const key=ownerKey(identity.userId),isDeleting=route==="/user-data"&&request.method==="DELETE";
         if(deletingUsers.has(key))throw new ChatbotError("conflict","User data is being deleted. Please retry shortly.",409);
         if(!(route==="/user-data"&&request.method==="DELETE"))await enforceRate(identity.userId);
-        if(isDeleting){
-          deletingUsers.add(key);
-          try{
-            const active=[...(activeByUser.get(key)??[])];
-            for(const item of active)item.controller.abort(new Error("User data is being deleted."));
-            await Promise.all(active.map(item=>item.completion));
-            await store.userData(instance,identity.userId);
-            response=new Response(null,{status:204});
-          }finally{deletingUsers.delete(key);}
-        }else await store.user(instance,identity.userId,identity.profile);
+        if(isDeleting){await purgeUser(identity.userId);response=new Response(null,{status:204});}
+        else await store.user(instance,identity.userId,identity.profile);
         if(isDeleting){
           // The deletion branch already produced its response.
         }
@@ -216,10 +208,12 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
         else if(route==="/preferences"&&request.method==="GET")response=json({preferences:await store.prefs(instance,identity.userId)});
         else if(route==="/preferences"&&request.method==="PUT"){
           const body=await readJson(request) as {preferences?:unknown};if(!body.preferences||typeof body.preferences!=="object"||Array.isArray(body.preferences)||JSON.stringify(body.preferences).length>20_000)throw new ChatbotError("invalid_input","preferences must be an object under 20 KB.");
+          const prefsRefusal=await guardInput(identity,JSON.stringify(body.preferences),"preferences");if(prefsRefusal!==undefined)throw new ChatbotError("input_rejected",prefsRefusal,422);
           await store.updatePrefs(instance,identity.userId,body.preferences as Record<string,unknown>);response=json({preferences:await store.prefs(instance,identity.userId)});
         } else if(route==="/memories"&&request.method==="GET")response=json({memories:await store.memories(instance,identity.userId)});
         else if(route==="/memories"&&request.method==="POST"){
           const body=await readJson(request) as {content?:unknown};if(typeof body.content!=="string"||!body.content.trim()||body.content.length>(limits.memoryChars??1000))throw new ChatbotError("invalid_input","Memory must be non-empty text within the configured size limit.");
+          const memoryRefusal=await guardInput(identity,body.content.trim(),"memory");if(memoryRefusal!==undefined)throw new ChatbotError("input_rejected",memoryRefusal,422);
           if((await store.memories(instance,identity.userId)).length>=(limits.memoryCount??8))throw new ChatbotError("memory_limit","The memory limit has been reached.",409);
           const content=body.content.trim();response=json({memory:{id:await store.addMemory(instance,identity.userId,content),content}},201);
         }
@@ -227,6 +221,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
         else if(route.startsWith("/memories/")&&request.method==="PATCH"){
           const id=route.split("/").pop()!,body=await readJson(request) as {content?:unknown};if(typeof body.content!=="string"||!body.content.trim()||body.content.length>(limits.memoryChars??1000))throw new ChatbotError("invalid_input","Memory must be non-empty text within the configured size limit.");
           if(!(await store.memories(instance,identity.userId)).some(memory=>memory.id===id))throw new ChatbotError("not_found","Memory not found.",404);
+          const editRefusal=await guardInput(identity,body.content.trim(),"memory");if(editRefusal!==undefined)throw new ChatbotError("input_rejected",editRefusal,422);
           await store.setMemory(instance,identity.userId,id,body.content.trim());response=json({ok:true});
         } else if(route.startsWith("/conversations/")){
           const parts=route.split("/"),id=parts[2]!;
@@ -241,6 +236,34 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       await emit("request",undefined,{method:request.method,route,status:response.status});
       return withCors(response,request);
     }catch(error){await emit("error",undefined,{code:error instanceof ChatbotError?error.code:"internal_error"});return withCors(errorResponse(error),request);}
+  }
+  /** Stop the user's active replies, then delete everything stored for them. */
+  async function purgeUser(userId:string){
+    const key=ownerKey(userId);
+    deletingUsers.add(key);
+    try{
+      const active=[...(activeByUser.get(key)??[])];
+      for(const item of active)item.controller.abort(new Error("User data is being deleted."));
+      await Promise.all(active.map(item=>item.completion));
+      await store.userData(instance,userId);
+    }finally{deletingUsers.delete(key);}
+  }
+  const WITHHELD="[Message withheld by the safety filter]";
+  /** The host guard's refusal text, or undefined when the text may proceed. */
+  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory"|"preferences",conversationId?:string):Promise<string|undefined>{
+    if(!options.inputGuard)return undefined;
+    let result:InputGuardResult;
+    try{result=await options.inputGuard({identity,content,kind,...(conversationId?{conversationId}:{})});}
+    catch{throw new ChatbotError("guard_unavailable","The assistant is temporarily unavailable. Please try again shortly.",503);}
+    if(!result||result.allow)return undefined;
+    return typeof result.reply==="string"&&result.reply.trim()?result.reply:"I can't help with that.";
+  }
+  /** Answer a refused message with the guard's text, as a normal stream; the user's text is not stored, so it never re-enters the context. */
+  async function refusedReply(id:string,requestId:string,reply:string):Promise<Response>{
+    await store.addMessage(id,"user",WITHHELD,"complete",requestId,[]);
+    const assistantId=await store.addMessage(id,"assistant",reply,"complete");
+    const frames=`event: delta\ndata: ${JSON.stringify({text:reply})}\n\nevent: done\ndata: ${JSON.stringify({messageId:assistantId})}\n\n`;
+    return new Response(new TextEncoder().encode(frames),{headers:{"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform"}});
   }
   async function sendMessage(request:Request,id:string,identity:UserIdentity):Promise<Response>{
     const user=identity.userId;
@@ -258,6 +281,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     if(mediaIds.length&&!imageSetting?.enabled)throw new ChatbotError("capability_disabled","Image input is disabled.",403);
     if(mediaIds.length>(imageSetting?.maxCount??4))throw new ChatbotError("invalid_image","Too many images were attached.");
     for(const mediaId of mediaIds)if(typeof mediaId!=="string"||!await store.mediaForMessage(instance,user,mediaId,id))throw new ChatbotError("invalid_image","One or more images are invalid or unavailable.");
+    const refusal=await guardInput(identity,messageContent,"message",id);if(refusal!==undefined)return refusedReply(id,requestId,refusal);
     const lock=`${instance}:${user}:${id}`,unlock=await store.tryLock(lock);if(!unlock)throw new ChatbotError("conflict","A reply is already being generated for this conversation.",409);
     if(await store.hasRequest(id,requestId)){await unlock();throw new ChatbotError("duplicate_request","This message request has already been accepted.",409);}
     const priorMessages=(await store.messages(id)).filter(message=>message.status==="complete");
@@ -402,10 +426,10 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       return new Response(stream,{headers:{"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform",connection:"keep-alive"}});
     }catch(error){try{await store.completeMessage(assistantId,"","interrupted");}catch{/* Storage is already unavailable; keep shutdown progressing. */}clearTimeout(timeout);await unlock();doneActive();throw error instanceof ChatbotError?error:new ChatbotError("provider_error","The assistant provider could not complete this request.",502);}
   }
-  return {ready:storeReady.then(()=>undefined),handle,async close(){if(closed)return;closed=true;for(const controller of activeControllers)controller.abort(new Error("Chatbot is shutting down."));await Promise.all(activeCompletions);const active=await storeReady;await active.close();}};
+  return {ready:storeReady.then(()=>undefined),handle,async deleteUserData(userId:string){await storeReady;await purgeUser(userId);},async close(){if(closed)return;closed=true;for(const controller of activeControllers)controller.abort(new Error("Chatbot is shutting down."));await Promise.all(activeCompletions);const active=await storeReady;await active.close();}};
 }
 
-export type { Chatbot, ChatbotEvent, ChatbotOptions, Branding, Capabilities, ContextLimits, IdentityResolver, PersonalizationOptions, ChatbotTool, ChatbotToolContext, UserIdentity, WidgetConfig } from "./types.js";
+export type { Chatbot, ChatbotEvent, ChatbotOptions, Branding, Capabilities, ContextLimits, IdentityResolver, InputGuard, InputGuardContext, InputGuardResult, PersonalizationOptions, ChatbotTool, ChatbotToolContext, UserIdentity, WidgetConfig } from "./types.js";
 export { ChatbotError } from "./errors.js";
 export { expressHandler } from "./express.js";
 

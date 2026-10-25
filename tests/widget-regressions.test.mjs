@@ -99,3 +99,14 @@ test('a failed send restores the draft and offers retry',async()=>{
   assert.equal(root.querySelector('.msg.user.failed'),null);assert.equal(root.querySelectorAll('.msg.user').length,1);
  }finally{widget.destroy();}
 });
+test('accentText sets the text color on accent surfaces (dark themes need dark text on a light accent)',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api',colors:{accent:'#a5b4fc',accentText:'#1e1b4b'}});
+ try{
+  await widget.ready;
+  const hostEl=host.shadowRoot.host??host;
+  const values=[...host.shadowRoot.querySelectorAll('*'),hostEl,host].map(e=>e.style?.getPropertyValue('--omni-on-accent')).filter(Boolean);
+  assert.ok(values.includes('#1e1b4b'),`--omni-on-accent not set: ${values}`);
+  const css=[...host.shadowRoot.querySelectorAll('style')].map(s=>s.textContent).join('');
+  assert.doesNotMatch(css,/color:#fff[;}]/);
+ }finally{widget.destroy();}
+});

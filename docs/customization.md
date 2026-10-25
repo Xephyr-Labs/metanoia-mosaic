@@ -14,6 +14,7 @@ mount(document.querySelector("#assistant")!, {
   suggestedPrompts: ["Review my latest order", "Explain a feature"],
   colors: {
     accent: "#5b4bdb",
+    accentText: "#ffffff", // text and icons on accent surfaces; use a dark value with a light accent
     panel: "#ffffff",
     text: "#20202a",
     muted: "#777786",

@@ -42,7 +42,8 @@ export class SqliteStore implements StoreContract {
     const row = this.db.prepare("SELECT profile,preferences FROM users WHERE instance_id=? AND user_id=?").get(instance,user) as {profile:string;preferences:string};
     const seed = JSON.parse(row.profile) as Record<string,unknown>;
     const preferences = JSON.parse(row.preferences) as Record<string,unknown>;
-    const merged = { ...seed, ...preferences };
+    // The host-resolved profile is verified data; a preference can add a key but never override one.
+    const merged = { ...preferences, ...seed };
     return merged;
   }
   list(instance: string,user:string) { return this.db.prepare("SELECT id,title,created_at,updated_at FROM conversations WHERE instance_id=? AND user_id=? ORDER BY updated_at DESC LIMIT 100").all(instance,user); }

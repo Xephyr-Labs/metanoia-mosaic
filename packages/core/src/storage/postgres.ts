@@ -42,7 +42,8 @@ export class PostgresStore implements Store {
     if(profile)await this.pool.query("INSERT INTO chatbot_users(instance_id,user_id,profile,created_at) VALUES($1,$2,$3::jsonb,now()) ON CONFLICT(instance_id,user_id) DO UPDATE SET profile=EXCLUDED.profile",[instance,user,JSON.stringify(profile)]);
     else await this.pool.query("INSERT INTO chatbot_users(instance_id,user_id,created_at) VALUES($1,$2,now()) ON CONFLICT(instance_id,user_id) DO NOTHING",[instance,user]);
     const result=await this.pool.query<{profile:Record<string,unknown>;preferences:Record<string,unknown>}>("SELECT profile,preferences FROM chatbot_users WHERE instance_id=$1 AND user_id=$2",[instance,user]);
-    return {...result.rows[0]!.profile,...result.rows[0]!.preferences};
+    // The host-resolved profile is verified data; a preference can add a key but never override one.
+    return {...result.rows[0]!.preferences,...result.rows[0]!.profile};
   }
   async list(instance:string,user:string){const r=await this.pool.query("SELECT id,title,created_at,updated_at FROM chatbot_conversations WHERE instance_id=$1 AND user_id=$2 ORDER BY updated_at DESC LIMIT 100",[instance,user]);return r.rows.map(x=>({...x,created_at:iso(x.created_at),updated_at:iso(x.updated_at)}));}
   async create(instance:string,user:string,title="New conversation"){const id=crypto.randomUUID(),at=new Date();const r=await this.pool.query("INSERT INTO chatbot_conversations(id,instance_id,user_id,title,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$5) RETURNING id,title,created_at,updated_at",[id,instance,user,title,at]);return {...r.rows[0]!,created_at:iso(r.rows[0]!.created_at),updated_at:iso(r.rows[0]!.updated_at)};}

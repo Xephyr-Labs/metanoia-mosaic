@@ -5,9 +5,10 @@ export function estimateTokens(text: string) { return Math.ceil(text.length / 3.
 
 function boundedProfile(profile:Record<string,unknown>,explicit:Record<string,unknown>,maxTokens:number){
   const selected:Record<string,unknown>={};let used=estimateTokens("{}");
-  const keys=[...new Set([...Object.keys(explicit),...Object.keys(profile)])];
+  // The host-resolved profile is verified data and wins; user preferences only add keys of their own.
+  const keys=[...new Set([...Object.keys(profile),...Object.keys(explicit)])];
   for(const key of keys){
-    let value=Object.prototype.hasOwnProperty.call(explicit,key)?explicit[key]:profile[key];
+    let value=Object.prototype.hasOwnProperty.call(profile,key)?profile[key]:explicit[key];
     let encoded=JSON.stringify(value);
     if(encoded===undefined)continue;
     if(encoded.length>1200)value=encoded.slice(0,1200);
