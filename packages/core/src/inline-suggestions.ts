@@ -5,7 +5,7 @@
 export const SUGGESTIONS_FENCE = "```suggestions";
 
 export const inlineSuggestionGuide = (count: number) =>
-  `Finally, after your answer, add a fenced code block tagged suggestions (opened with ${SUGGESTIONS_FENCE}) containing a JSON array of ${count} short follow-up questions the user could ask you next, each specific to this exchange and under 72 characters. Write nothing after that block. The user never sees it.`;
+  `Finally, after your answer, add a fenced code block tagged suggestions (opened with ${SUGGESTIONS_FENCE}) containing a JSON array of ${count} short follow-up questions the user could ask you next, each specific to this exchange and under 72 characters. Write nothing after that block. The user never sees it as text; it appears as suggestion buttons, so do not also end your answer with a choices block that offers next steps. Use choices only when the user must pick between options to answer your question.`;
 
 /** Normalise model-written suggestions the same way as the separate-call path. */
 export function cleanSuggestions(candidates: unknown, count: number): string[] {
