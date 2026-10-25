@@ -7,3 +7,7 @@ Add `inputGuard`: screen every chat message, user-written memory and preference 
 Add `chatbot.deleteUserData(userId)` so a host can erase a user's conversations, memories, preferences and profile when it deletes the account.
 
 The profile from your `identity` resolver now takes precedence over a user preference with the same key (previously a user could override verified profile fields through `PUT /preferences`).
+
+`inputGuardTiming: "parallel"` runs the guard alongside the model request and releases nothing (no text, no tool calls) until it allows, hiding the guard's latency.
+
+`capabilities.suggestions.inline` has the model append follow-up suggestions to its answer, removing the separate suggestions request.
