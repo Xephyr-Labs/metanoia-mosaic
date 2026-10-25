@@ -74,6 +74,22 @@ createChatbot({
 });
 ```
 
+## Input guard
+
+Screen what users type before the model or storage sees it: moderation, topic limits, prompt-injection checks, or blocking abusive accounts. `inputGuard` runs on every chat message and every memory the user writes.
+
+```js
+createChatbot({
+  // ...
+  inputGuard: async ({ identity, content, kind, conversationId }) => {
+    const verdict = await moderation.check(identity.userId, content);
+    return verdict.ok ? { allow: true } : { allow: false, reply: verdict.message };
+  },
+});
+```
+
+A refused message is answered with `reply` as a normal streamed answer, without calling the model; the history keeps a placeholder instead of the user's text, so it never re-enters the context. A refused memory gets `422 input_rejected`. If the guard throws, the request fails closed with `503 guard_unavailable`.
+
 ## Main options
 
 | Option | Purpose |
@@ -87,6 +103,7 @@ createChatbot({
 | `tools` | Server-side functions, limited by `maxToolCallsPerTurn` and `toolTimeoutMs` |
 | `allowedOrigins` | Browser origins allowed cross-origin. Same-origin only when unset |
 | `rateLimit` | Per-user request limit |
+| `inputGuard` | Screens each message and memory before the model sees it (see above) |
 
 ## Clients
 
