@@ -1,5 +1,11 @@
 # @metanoia/widget
 
+## 0.3.0
+
+### Minor Changes
+
+- 12d90e6: Add `colors.accentText` for text and icons on accent surfaces (send button, launcher, user messages, chosen choices). It defaults to white; dark themes with a light accent need a dark value to keep readable contrast.
+
 ## 0.2.1
 
 ### Patch Changes
