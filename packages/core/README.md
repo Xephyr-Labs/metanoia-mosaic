@@ -76,7 +76,7 @@ createChatbot({
 
 ## Input guard
 
-Screen what users type before the model or storage sees it: moderation, topic limits, prompt-injection checks, or blocking abusive accounts. `inputGuard` runs on every chat message and every memory the user writes.
+Screen what users type before the model or storage sees it: moderation, topic limits, prompt-injection checks, or blocking abusive accounts. `inputGuard` runs on every chat message, every memory the user writes and every preference update.
 
 ```js
 createChatbot({
@@ -88,7 +88,11 @@ createChatbot({
 });
 ```
 
-A refused message is answered with `reply` as a normal streamed answer, without calling the model; the history keeps a placeholder instead of the user's text, so it never re-enters the context. A refused memory gets `422 input_rejected`. If the guard throws, the request fails closed with `503 guard_unavailable`.
+A refused message is answered with `reply` as a normal streamed answer, without calling the model; the history keeps a placeholder instead of the user's text, so it never re-enters the context. A refused memory or preference update gets `422 input_rejected`. If the guard throws, the request fails closed with `503 guard_unavailable`.
+
+## Deleting a user's data
+
+Call `await chatbot.deleteUserData(userId)` when your app deletes an account: it stops the user's active replies and removes their conversations, memories, preferences and stored profile. Users can also do this themselves with `DELETE /user-data`.
 
 ## Main options
 

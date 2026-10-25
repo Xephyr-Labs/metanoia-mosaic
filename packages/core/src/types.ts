@@ -55,7 +55,7 @@ export type ChatbotOptions = {
   rateLimit?: { requests: number; windowMs: number };
   /**
    * Screens user text before the model or storage sees it: every chat message and every memory
-   * the user writes. Return { allow: false, reply } to answer with `reply` instead (the user's text
+   * or preference update the user writes. Return { allow: false, reply } to answer with `reply` instead (the user's text
    * is not kept in history; a refused memory is rejected with 422 input_rejected). A guard that
    * throws fails closed with 503 guard_unavailable.
    */
@@ -63,10 +63,16 @@ export type ChatbotOptions = {
   onEvent?: (event: ChatbotEvent) => void | Promise<void>;
 };
 
-export type InputGuardContext = { identity: UserIdentity; content: string; kind: "message" | "memory"; conversationId?: string };
+export type InputGuardContext = { identity: UserIdentity; content: string; kind: "message" | "memory" | "preferences"; conversationId?: string };
 export type InputGuardResult = { allow: true } | { allow: false; reply: string };
 export type InputGuard = (context: InputGuardContext) => InputGuardResult | Promise<InputGuardResult>;
 
 export type ChatbotEvent = { type: string; instanceId: string; userId?: string; at: string; data?: Record<string, unknown> };
 export type WidgetConfig = { branding: Required<Pick<Branding, "name" | "greeting" | "theme" | "placement" | "width" | "height">> & Branding; capabilities: { images: boolean; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; richResponses: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number } };
-export type Chatbot = { ready: Promise<void>; handle(request: Request): Promise<Response>; close(): Promise<void> };
+export type Chatbot = {
+  ready: Promise<void>;
+  handle(request: Request): Promise<Response>;
+  /** Delete everything stored for a user (conversations, memories, preferences, profile), e.g. when the host deletes the account. */
+  deleteUserData(userId: string): Promise<void>;
+  close(): Promise<void>;
+};

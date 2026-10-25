@@ -171,16 +171,8 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
         const key=ownerKey(identity.userId),isDeleting=route==="/user-data"&&request.method==="DELETE";
         if(deletingUsers.has(key))throw new ChatbotError("conflict","User data is being deleted. Please retry shortly.",409);
         if(!(route==="/user-data"&&request.method==="DELETE"))await enforceRate(identity.userId);
-        if(isDeleting){
-          deletingUsers.add(key);
-          try{
-            const active=[...(activeByUser.get(key)??[])];
-            for(const item of active)item.controller.abort(new Error("User data is being deleted."));
-            await Promise.all(active.map(item=>item.completion));
-            await store.userData(instance,identity.userId);
-            response=new Response(null,{status:204});
-          }finally{deletingUsers.delete(key);}
-        }else await store.user(instance,identity.userId,identity.profile);
+        if(isDeleting){await purgeUser(identity.userId);response=new Response(null,{status:204});}
+        else await store.user(instance,identity.userId,identity.profile);
         if(isDeleting){
           // The deletion branch already produced its response.
         }
@@ -216,6 +208,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
         else if(route==="/preferences"&&request.method==="GET")response=json({preferences:await store.prefs(instance,identity.userId)});
         else if(route==="/preferences"&&request.method==="PUT"){
           const body=await readJson(request) as {preferences?:unknown};if(!body.preferences||typeof body.preferences!=="object"||Array.isArray(body.preferences)||JSON.stringify(body.preferences).length>20_000)throw new ChatbotError("invalid_input","preferences must be an object under 20 KB.");
+          const prefsRefusal=await guardInput(identity,JSON.stringify(body.preferences),"preferences");if(prefsRefusal!==undefined)throw new ChatbotError("input_rejected",prefsRefusal,422);
           await store.updatePrefs(instance,identity.userId,body.preferences as Record<string,unknown>);response=json({preferences:await store.prefs(instance,identity.userId)});
         } else if(route==="/memories"&&request.method==="GET")response=json({memories:await store.memories(instance,identity.userId)});
         else if(route==="/memories"&&request.method==="POST"){
@@ -244,9 +237,20 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       return withCors(response,request);
     }catch(error){await emit("error",undefined,{code:error instanceof ChatbotError?error.code:"internal_error"});return withCors(errorResponse(error),request);}
   }
+  /** Stop the user's active replies, then delete everything stored for them. */
+  async function purgeUser(userId:string){
+    const key=ownerKey(userId);
+    deletingUsers.add(key);
+    try{
+      const active=[...(activeByUser.get(key)??[])];
+      for(const item of active)item.controller.abort(new Error("User data is being deleted."));
+      await Promise.all(active.map(item=>item.completion));
+      await store.userData(instance,userId);
+    }finally{deletingUsers.delete(key);}
+  }
   const WITHHELD="[Message withheld by the safety filter]";
   /** The host guard's refusal text, or undefined when the text may proceed. */
-  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory",conversationId?:string):Promise<string|undefined>{
+  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory"|"preferences",conversationId?:string):Promise<string|undefined>{
     if(!options.inputGuard)return undefined;
     let result:InputGuardResult;
     try{result=await options.inputGuard({identity,content,kind,...(conversationId?{conversationId}:{})});}
@@ -422,7 +426,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       return new Response(stream,{headers:{"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache, no-transform",connection:"keep-alive"}});
     }catch(error){try{await store.completeMessage(assistantId,"","interrupted");}catch{/* Storage is already unavailable; keep shutdown progressing. */}clearTimeout(timeout);await unlock();doneActive();throw error instanceof ChatbotError?error:new ChatbotError("provider_error","The assistant provider could not complete this request.",502);}
   }
-  return {ready:storeReady.then(()=>undefined),handle,async close(){if(closed)return;closed=true;for(const controller of activeControllers)controller.abort(new Error("Chatbot is shutting down."));await Promise.all(activeCompletions);const active=await storeReady;await active.close();}};
+  return {ready:storeReady.then(()=>undefined),handle,async deleteUserData(userId:string){await storeReady;await purgeUser(userId);},async close(){if(closed)return;closed=true;for(const controller of activeControllers)controller.abort(new Error("Chatbot is shutting down."));await Promise.all(activeCompletions);const active=await storeReady;await active.close();}};
 }
 
 export type { Chatbot, ChatbotEvent, ChatbotOptions, Branding, Capabilities, ContextLimits, IdentityResolver, InputGuard, InputGuardContext, InputGuardResult, PersonalizationOptions, ChatbotTool, ChatbotToolContext, UserIdentity, WidgetConfig } from "./types.js";
