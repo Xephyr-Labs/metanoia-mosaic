@@ -5,6 +5,7 @@ export function validateOptions(options: ChatbotOptions): void {
   if (!options.provider?.baseUrl || !options.provider.apiKey || !options.provider.model) throw new ChatbotError("invalid_config", "provider.baseUrl, provider.apiKey, and provider.model are required.", 500);
   try { new URL(options.provider.baseUrl); } catch { throw new ChatbotError("invalid_config", "provider.baseUrl must be a valid URL.", 500); }
   if(options.provider.compatibility!==undefined&&!["openai","deepinfra","openrouter"].includes(options.provider.compatibility))throw new ChatbotError("invalid_config","provider.compatibility must be openai, deepinfra, or openrouter.",500);
+  if (options.inputGuardTiming !== undefined && options.inputGuardTiming !== "before" && options.inputGuardTiming !== "parallel") throw new ChatbotError("invalid_config", "inputGuardTiming must be before or parallel.", 500);
   if (options.inputGuard !== undefined && typeof options.inputGuard !== "function") throw new ChatbotError("invalid_config", "inputGuard must be a function.", 500);
   if (!options.identity && !options.anonymous) throw new ChatbotError("invalid_config", "Configure an identity resolver or explicitly enable anonymous mode.", 500);
   if (options.provider.timeoutMs !== undefined && (!Number.isFinite(options.provider.timeoutMs) || options.provider.timeoutMs < 1 || options.provider.timeoutMs >= 14 * 60_000)) throw new ChatbotError("invalid_config", "provider.timeoutMs must be between 1 millisecond and 14 minutes.",500);
@@ -20,6 +21,7 @@ export function validateOptions(options: ChatbotOptions): void {
   if (options.capabilities?.voiceInput?.enabled && (!options.capabilities.voiceInput.model || !options.capabilities.voiceInput.baseUrl || !options.capabilities.voiceInput.apiKey)) throw new ChatbotError("invalid_config", "Voice input requires its own base URL, API key, and transcription model.", 500);
   if (options.capabilities?.voiceOutput?.enabled && (!options.capabilities.voiceOutput.model || !options.capabilities.voiceOutput.voice || !options.capabilities.voiceOutput.baseUrl || !options.capabilities.voiceOutput.apiKey)) throw new ChatbotError("invalid_config", "Voice output requires its own base URL, API key, speech model, and voice.", 500);
   const suggestions=options.capabilities?.suggestions;
+  if(suggestions?.inline!==undefined&&typeof suggestions.inline!=="boolean")throw new ChatbotError("invalid_config","capabilities.suggestions.inline must be a boolean.",500);
   if(suggestions&&typeof suggestions.enabled!=="boolean")throw new ChatbotError("invalid_config","capabilities.suggestions.enabled must be a boolean.",500);
   if(suggestions?.count!==undefined&&(!Number.isInteger(suggestions.count)||suggestions.count<1||suggestions.count>5))throw new ChatbotError("invalid_config","capabilities.suggestions.count must be a whole number from 1 to 5.",500);
   const search=options.capabilities?.webSearch;

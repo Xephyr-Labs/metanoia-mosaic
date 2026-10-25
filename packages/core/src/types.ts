@@ -8,7 +8,8 @@ export type Capabilities = {
   voiceInput?: { enabled: boolean; baseUrl?: string; apiKey?: string; model?: string; maxBytes?: number; maxSeconds?: number };
   voiceOutput?: { enabled: boolean; baseUrl?: string; apiKey?: string; model?: string; voice?: string };
   /** Opt-in contextual follow-up prompts. Generates one additional short provider completion per turn. */
-  suggestions?: { enabled: boolean; count?: number };
+  /** inline: the model appends the suggestions to its answer (no second call); see inline-suggestions.ts. */
+  suggestions?: { enabled: boolean; count?: number; inline?: boolean };
   /** Tells the model it may answer with tables, charts, choices, Mermaid, SVG, and math. Defaults to enabled. */
   richResponses?: { enabled: boolean };
   webSearch?: { enabled: boolean; engine?: "auto" | "native" | "exa" | "firecrawl" | "parallel" | "perplexity"; maxResults?: number; maxTotalResults?: number; maxUses?: number; allowedDomains?: string[]; excludedDomains?: string[] };
@@ -60,6 +61,12 @@ export type ChatbotOptions = {
    * throws fails closed with 503 guard_unavailable.
    */
   inputGuard?: InputGuard;
+  /**
+   * "before" (default): the guard decides, then the model is called. "parallel": both start at once
+   * and nothing from the model is read or sent (and no tool runs) until the guard allows, hiding the
+   * guard's latency; a refusal aborts the model request.
+   */
+  inputGuardTiming?: "before" | "parallel";
   onEvent?: (event: ChatbotEvent) => void | Promise<void>;
 };
 

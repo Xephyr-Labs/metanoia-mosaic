@@ -90,6 +90,8 @@ createChatbot({
 
 A refused message is answered with `reply` as a normal streamed answer, without calling the model; the history keeps a placeholder instead of the user's text, so it never re-enters the context. A refused memory or preference update gets `422 input_rejected`. If the guard throws, the request fails closed with `503 guard_unavailable`.
 
+By default the guard decides before the model is called. Set `inputGuardTiming: "parallel"` to start both at once: nothing from the model is read or sent, and no tool runs, until the guard allows, so its latency is hidden; a refusal aborts the model request (you may pay for the aborted prompt on refused messages).
+
 ## Deleting a user's data
 
 Call `await chatbot.deleteUserData(userId)` when your app deletes an account: it stops the user's active replies and removes their conversations, memories, preferences and stored profile. Users can also do this themselves with `DELETE /user-data`.
@@ -102,7 +104,7 @@ Call `await chatbot.deleteUserData(userId)` when your app deletes an account: it
 | `identity` | `async (request) => ({ userId, profile? }) \| null` from your own session |
 | `storage` | `{ type: "sqlite", filename }` (one process) or `{ type: "postgres", connectionString }` |
 | `branding` | Name, avatar, greeting, personality, suggested prompts, colors, theme |
-| `capabilities` | Opt-ins: `suggestions`, `images`, `voiceInput`, `voiceOutput`, `webSearch` (OpenRouter) |
+| `capabilities` | Opt-ins: `suggestions` (`inline: true` puts them in the answer instead of a second call), `images`, `voiceInput`, `voiceOutput`, `webSearch` (OpenRouter) |
 | `personalization` | `{ autoMemory: true }` to extract memories automatically (off by default) |
 | `tools` | Server-side functions, limited by `maxToolCallsPerTurn` and `toolTimeoutMs` |
 | `allowedOrigins` | Browser origins allowed cross-origin. Same-origin only when unset |
