@@ -92,7 +92,7 @@ button:disabled{opacity:.6;cursor:wait}
 .toolbar button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:34px;border:0;border-radius:10px;padding:0 7px;background:transparent;color:var(--omni-muted);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;transition:background .15s var(--omni-ease),color .15s var(--omni-ease)}
 .toolbar button:first-child{margin-left:0}
 .toolbar button:hover{background:var(--omni-assistant-bg);color:var(--omni-fg)}
-.messages{padding:20px 18px;overflow:auto;flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:12px;scrollbar-width:thin;scrollbar-color:var(--omni-border) transparent}
+.messages{padding:20px 18px;overflow:auto;overscroll-behavior:contain;flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:12px;scrollbar-width:thin;scrollbar-color:var(--omni-border) transparent}
 .msg{width:fit-content;max-width:min(88%,520px);white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 15px;border-radius:5px 16px 16px 16px;background:var(--omni-assistant-bg);line-height:1.58;font-size:13px;letter-spacing:.002em}
 .msg.rich{white-space:normal}
 .msg.rich p,.msg.rich li{white-space:pre-wrap;margin:0}
@@ -104,6 +104,7 @@ button:disabled{opacity:.6;cursor:wait}
 .msg.rich code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;padding:1px 4px;border-radius:5px;background:color-mix(in srgb,var(--omni-fg) 7%,transparent)}
 .msg.rich pre{margin:.65em 0 0;padding:10px 12px;border-radius:9px;overflow:auto;white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:color-mix(in srgb,var(--omni-fg) 6%,transparent)}
 .msg.rich a{color:var(--omni-link);text-underline-offset:2px}
+.msg.rich a.cta{display:inline-block;margin-top:.2em;padding:9px 16px;border-radius:999px;background:var(--omni-accent);color:var(--omni-on-accent,#fff);font-weight:600;text-decoration:none}
 .msg.rich:has(.table-wrap,.code-block,.chart,.diagram,.illustration,.math-display){width:min(88%,520px)}
 .msg.rich .table-wrap{margin-top:.65em;max-width:100%;overflow:auto;border:1px solid var(--omni-border);border-radius:9px}
 .msg.rich .table-wrap:focus-visible{outline:2px solid var(--omni-ring);outline-offset:2px}
@@ -195,8 +196,9 @@ button:disabled{opacity:.6;cursor:wait}
 .settings input,.settings textarea{width:100%;font-size:13px;padding:10px;margin-top:4px;border:1px solid var(--omni-field-border);border-radius:10px;color:var(--omni-fg);background:var(--omni-bg)}
 .settings textarea{min-height:84px}.settings .memory{padding:9px 0;border-bottom:1px solid var(--omni-border);overflow-wrap:anywhere}
 @media(max-width:520px){
-  .panel{inset:auto 8px 8px;width:auto;height:min(var(--omni-height,650px),calc(100dvh - 16px));max-height:calc(100dvh - 16px);border-radius:20px}
-  .right.panel,.left.panel{right:8px;left:8px}
+  .panel{inset:0;width:100%;height:100dvh;max-height:none;border:0;border-radius:0;padding-bottom:env(safe-area-inset-bottom)}
+  .right.panel,.left.panel{right:0;left:0}
+  .compose textarea,.settings input,.settings textarea{font-size:16px}
   .launcher{bottom:16px}.right{right:16px}.left{left:16px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
@@ -216,7 +218,11 @@ export function mount(target:Element,options:WidgetOptions){
  function sendChoice(text:string){const area=panel.querySelector<HTMLTextAreaElement>(".compose textarea");if(submitting||destroyed||!area?.form)return false;area.value=text;area.form.requestSubmit();return true;}
  const color=(value:unknown,fallback:string)=>typeof value==="string"&&value.length<100&&!/[;{}<>]/.test(value)&&CSS.supports("color",value)?value:fallback;
  const font=(value:unknown,fallback:string)=>typeof value==="string"&&value.length<120&&!/[;{}<>\n\r]/.test(value)&&CSS.supports("font-family",value)?value:fallback;
- function close(){panel.classList.add("hidden");launcher.focus();}function open(){panel.classList.remove("hidden");root.querySelector<HTMLTextAreaElement>("textarea")?.focus();}
+ // On a phone the panel is a full-screen sheet: the page behind must not scroll, and focusing the
+ // field on open would pop the keyboard over the greeting before the user chose to type.
+ const phone=()=>matchMedia("(max-width:520px)").matches;let pageOverflow:string|undefined;
+ function unlockPage(){if(pageOverflow!==undefined){document.documentElement.style.overflow=pageOverflow;pageOverflow=undefined;}}
+ function close(){panel.classList.add("hidden");unlockPage();launcher.focus();}function open(){panel.classList.remove("hidden");if(phone()){if(pageOverflow===undefined){pageOverflow=document.documentElement.style.overflow;document.documentElement.style.overflow="hidden";}panel.querySelector<HTMLButtonElement>("header button[aria-label]")?.focus();}else root.querySelector<HTMLTextAreaElement>("textarea")?.focus();}
  function translateComposer(form:HTMLFormElement){
   const area=form.querySelector("textarea");
   if(area){area.placeholder=label("messagePlaceholder");area.setAttribute("aria-label",label("message"));}
@@ -312,5 +318,5 @@ export function mount(target:Element,options:WidgetOptions){
   return play;
  }
  launcher.onclick=open;const ready=api("/config").then(async r=>{if(!r.ok)throw Error();config=await r.json() as Config;if(current.conversationStore){try{const saved=await current.conversationStore.load();if(saved){const existing=await api(`/conversations/${encodeURIComponent(saved)}`);if(existing.ok)conversationId=saved;else if(existing.status===404)await current.conversationStore.clear?.();}}catch{/* restore is optional; allow a fresh chat */}}paint(false);}).catch(()=>{if(destroyed)return;launcher.title=label("unavailable");showNotice(label("unavailable"));});
- return {ready,update(next:Partial<WidgetOptions>){if(Object.keys(next).every(key=>current[key as keyof WidgetOptions]===next[key as keyof WidgetOptions]))return;current={...current,...next};if(config)paint();},open,close,destroy(){destroyed=true;abort?.abort();for(const controller of mediaControllers)controller.abort();if(recordingTimer)clearTimeout(recordingTimer);recorder?.stop();for(const audio of audioPlayers){audio.pause();audio.src="";}audioPlayers.clear();for(const url of objectUrls)URL.revokeObjectURL(url);root.replaceChildren();}};
+ return {ready,update(next:Partial<WidgetOptions>){if(Object.keys(next).every(key=>current[key as keyof WidgetOptions]===next[key as keyof WidgetOptions]))return;current={...current,...next};if(config)paint();},open,close,destroy(){destroyed=true;unlockPage();abort?.abort();for(const controller of mediaControllers)controller.abort();if(recordingTimer)clearTimeout(recordingTimer);recorder?.stop();for(const audio of audioPlayers){audio.pause();audio.src="";}audioPlayers.clear();for(const url of objectUrls)URL.revokeObjectURL(url);root.replaceChildren();}};
 }

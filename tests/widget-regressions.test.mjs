@@ -110,3 +110,18 @@ test('accentText sets the text color on accent surfaces (dark themes need dark t
   assert.doesNotMatch(css,/color:#fff[;}]/);
  }finally{widget.destroy();}
 });
+test('on a phone the panel is a full-screen sheet: page scroll locked while open, no keyboard pop, 16px fields',async()=>{
+ const host=setup();const media=globalThis.matchMedia;globalThis.matchMedia=q=>({matches:/max-width:520px/.test(q)});
+ const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;const root=host.shadowRoot;
+  document.documentElement.style.overflow='auto';
+  widget.open();
+  assert.equal(document.documentElement.style.overflow,'hidden');
+  assert.notEqual(root.activeElement,root.querySelector('textarea'),'focusing the field on open pops the keyboard over the sheet');
+  widget.close();
+  assert.equal(document.documentElement.style.overflow,'auto');
+  const css=root.querySelector('style').textContent;const phone=css.slice(css.indexOf('@media(max-width:520px)'));
+  assert.match(phone,/\.panel\{inset:0;/);
+  assert.match(phone,/textarea[^{]*\{font-size:16px\}/,'under 16px iOS zooms the page on focus');
+ }finally{widget.destroy();globalThis.matchMedia=media;document.documentElement.style.overflow='';}
+});
