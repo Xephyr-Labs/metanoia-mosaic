@@ -220,3 +220,11 @@ test('Listen speaks only prose, not code bars or chart tables',async()=>{
   assert.match(spoken,/Hello prose/);assert.doesNotMatch(spoken,/Copy|4242|Sales/);
  }finally{widget.destroy();}
 });
+test("a link alone on its line renders as a button; a link inside a sentence stays inline",async()=>{
+ const host=setup();const widget=mount(host,{endpoint:"/api"});
+ try{await widget.ready;await say(host,"You have no journey yet.\n\n[Create your journey](https://app.test/questionnaire)\n\nOr read [the guide](https://app.test/guide) first.");
+  const links=[...last(host).querySelectorAll("a")];
+  assert.deepEqual(links.map(a=>a.className),["cta",""]);
+  assert.equal(links[0].href,"https://app.test/questionnaire");
+ }finally{widget.destroy();}
+});

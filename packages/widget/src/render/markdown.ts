@@ -5,7 +5,10 @@ import { mk, type RenderContext } from "./util.js";
 export function renderMarkdown(host:HTMLElement,text:string,ctx:RenderContext){
  host.replaceChildren();
  const lines=text.split("\n");let list:HTMLElement|undefined,para:string[]=[];
- const flush=()=>{if(para.length){const p=mk("p");inline(p,para.join("\n"),ctx);host.append(p);para=[];}};
+ const flush=()=>{if(para.length){const p=mk("p");inline(p,para.join("\n"),ctx);
+ // A link alone on its line is a call to action ("Create your journey"): draw it as a button.
+ const only=[...p.childNodes].filter(n=>n.nodeType!==3||n.textContent!.trim());if(only.length===1&&(only[0] as Element).tagName==="A")(only[0] as Element).className="cta";
+ host.append(p);para=[];}};
  const block=(node:Node)=>{flush();list=undefined;host.append(node);};
  for(let i=0;i<lines.length;i++){
   const line=lines[i]!,next=lines[i+1];
