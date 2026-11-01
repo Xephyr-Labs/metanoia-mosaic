@@ -1,5 +1,12 @@
 # @metanoia/react
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [ca446a8]
+  - @metanoialabs/widget@0.3.1
+
 ## 0.3.0
 
 ### Patch Changes
