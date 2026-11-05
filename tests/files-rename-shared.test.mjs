@@ -123,6 +123,26 @@ test('a name the user gave before the first answer stays, and a refused first tu
  }finally{await bot.close();globalThis.fetch=originalFetch;await rm(dir,{recursive:true,force:true});}
 });
 
+test('the input guard gets each attached image, and a refusal stops the turn before the model',async()=>{
+ const dir=await mkdtemp(`${tmpdir()}/chat-files-images-`),seen=[];let modelCalls=0;
+ globalThis.fetch=async()=>{modelCalls++;return streamReply('ok');};
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=','base64');
+ const bot=createChatbot({provider:{baseUrl:'https://mock.test/v1/',apiKey:'test',model:'test'},identity:()=>({userId:'u'}),storage:{filename:`${dir}/db.sqlite`},capabilities:{images:{enabled:true}},inputGuard:ctx=>{seen.push(ctx);return ctx.images?.length?{allow:false,reply:'Not that picture.'}:{allow:true};}});
+ try{
+  await bot.ready;const call=(path,init={})=>bot.handle(new Request(`http://app.test${path}`,init));
+  const id=(await(await call('/conversations',{method:'POST'})).json()).conversation.id;
+  const form=new FormData();form.append('conversationId',id);form.append('file',new File([png],'p.png',{type:'image/png'}));
+  const image=await(await call('/media',{method:'POST',body:form})).json();
+  const send=async(body)=>(await call(`/conversations/${id}/messages`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})).text();
+  assert.match(await send({content:'Review this',mediaIds:[image.mediaId]}),/Not that picture\./);
+  assert.equal(modelCalls,0);
+  assert.equal(seen[0].typed,'Review this');
+  assert.deepEqual(seen[0].images.map(i=>[i.mime,Buffer.compare(i.bytes,png)]),[['image/png',0]]);
+  await send({content:'Just text'});
+  assert.equal(seen[1].images,undefined);
+ }finally{await bot.close();globalThis.fetch=originalFetch;await rm(dir,{recursive:true,force:true});}
+});
+
 test('file text cannot close its own block, and Shared stays fast on hostile message text',async()=>{
  const f=await fixture({capabilities:{documents:{enabled:true}}});
  try{

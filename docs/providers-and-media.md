@@ -40,6 +40,8 @@ Host functions use OpenAI-compatible Chat Completions function tools; each integ
 
 Image input is off by default. Enable it with `capabilities.images.enabled` and use an image-capable chat model. The upload route accepts JPEG, PNG, and WebP, checks file signatures and dimensions, applies byte/count limits, and serves stored content only to its owner. Uploaded bytes stay in the local SQLite database. The model's image token cost varies, so configure `context.imageTokenReserve` conservatively.
 
+The input guard gets the images attached to a message as `images` (each one's `mime` and `bytes`) along with `typed`, so a guard with an image-capable classifier can refuse harmful text or instructions inside a picture before the model reads it. Without such a guard, the model sees images nobody screened.
+
 ## Files
 
 File input is off by default. Enable it with `capabilities.documents.enabled`. Mosaic ships no parsers: pass `extract({ bytes, mime, name })` to turn an upload into text with whatever library your server already has. Without `extract`, only text files (`.txt`, `.md`, `.csv`) are read, as UTF-8. With it, the default types are PDF, Word (`.docx`), and those text files; set `types` to narrow or widen the list.
