@@ -143,6 +143,30 @@ test('the input guard gets each attached image, and a refusal stops the turn bef
  }finally{await bot.close();globalThis.fetch=originalFetch;await rm(dir,{recursive:true,force:true});}
 });
 
+test('an image refused in parallel timing, or sent while images are off, never reaches a later turn',async()=>{
+ const dir=await mkdtemp(`${tmpdir()}/chat-files-history-`),bodies=[];
+ globalThis.fetch=async(_url,init)=>{bodies.push(JSON.parse(init.body));return streamReply('ok');};
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=','base64');
+ const make=(images,inputGuard)=>createChatbot({provider:{baseUrl:'https://mock.test/v1/',apiKey:'test',model:'test'},identity:()=>({userId:'u'}),storage:{filename:`${dir}/db.sqlite`},capabilities:{images:{enabled:images}},inputGuard,inputGuardTiming:'parallel'});
+ const imagesIn=body=>body.messages.flatMap(m=>Array.isArray(m.content)?m.content:[]).filter(p=>p.type==='image_url').length;
+ let bot=make(true,async ctx=>ctx.images?.length?{allow:false,reply:'No.'}:{allow:true});
+ try{
+  await bot.ready;let call=(path,init={})=>bot.handle(new Request(`http://app.test${path}`,init));
+  const id=(await(await call('/conversations',{method:'POST'})).json()).conversation.id;
+  const upload=async()=>{const form=new FormData();form.append('conversationId',id);form.append('file',new File([png],'p.png',{type:'image/png'}));return(await(await call('/media',{method:'POST',body:form})).json()).mediaId;};
+  const send=async body=>(await call(`/conversations/${id}/messages`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})).text();
+  assert.match(await send({content:'Look',mediaIds:[await upload()]}),/No\./);
+  bodies.length=0;await send({content:'Describe my previous image'});
+  assert.equal(imagesIn(bodies.at(-1)),0);
+  // An image the guard allowed stays in context while images are on, and drops out once they are off.
+  await bot.close();bot=make(true,()=>({allow:true}));await bot.ready;call=(path,init={})=>bot.handle(new Request(`http://app.test${path}`,init));
+  await send({content:'Look again',mediaIds:[await upload()]});
+  bodies.length=0;await send({content:'And now?'});assert.equal(imagesIn(bodies.at(-1)),1);
+  await bot.close();bot=make(false,()=>({allow:true}));await bot.ready;call=(path,init={})=>bot.handle(new Request(`http://app.test${path}`,init));
+  bodies.length=0;await send({content:'Still there?'});assert.equal(imagesIn(bodies.at(-1)),0);
+ }finally{await bot.close();globalThis.fetch=originalFetch;await rm(dir,{recursive:true,force:true});}
+});
+
 test('file text cannot close its own block, and Shared stays fast on hostile message text',async()=>{
  const f=await fixture({capabilities:{documents:{enabled:true}}});
  try{

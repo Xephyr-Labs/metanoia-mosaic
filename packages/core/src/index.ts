@@ -353,7 +353,8 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const priorContextMessages=priorMessages.slice(summarySnapshot.messageCount).slice(-(limits.recentMessages??20));
     const historicImageIds:string[]=[];let historicalImageCount=0;
     const imageContextLimit=imageSetting?.maxCount??4;
-    for(const message of [...priorContextMessages].reverse()){
+    // With images off, earlier images stay out too: they may never have been screened.
+    for(const message of imageSetting?.enabled?[...priorContextMessages].reverse():[]){
       if(message.role!=="user"||!message.mediaIds?.length)continue;
       const remaining=imageContextLimit-mediaIds.length-historicalImageCount;if(remaining<=0)break;
       const chosen=message.mediaIds.slice(0,remaining);historicImageIds.push(...chosen);historicalImageCount+=chosen.length;
@@ -406,8 +407,8 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
         const verdict=await guardVerdict;
         if(verdict.error!==undefined||verdict.refusal!==undefined){
           abort.abort(new Error("Refused by the input guard."));
-          // Unscreened or refused text must not re-enter the context on later turns.
-          await store.completeMessage(userMessageId!,WITHHELD,"complete");
+          // Unscreened or refused text and images must not re-enter the context on later turns.
+          await store.withholdMessage(userMessageId!,WITHHELD);
           if(verdict.error!==undefined)throw new ChatbotError("guard_unavailable","The assistant is temporarily unavailable. Please try again shortly.",503);
           await store.completeMessage(assistantId!,verdict.refusal!,"complete");answerCompleted=true;
           clearTimeout(timeout);await unlock();doneActive();

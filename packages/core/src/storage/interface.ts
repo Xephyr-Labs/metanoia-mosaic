@@ -18,6 +18,8 @@ export interface Store {
   addMessage(id:string,role:string,content:string,status?:string,requestId?:string,mediaIds?:string[]):Awaitable<string>;
   hasRequest(id:string,requestId:string):Awaitable<boolean>;
   completeMessage(id:string,content:string,status:string,input?:number,output?:number):Awaitable<void>;
+  /** Replace a refused user message's text and drop its images, so neither reaches a later turn. */
+  withholdMessage(id:string,content:string):Awaitable<void>;
   setSuggestions(id:string,prompts:string[]):Awaitable<void>;
   /** onlyIfDefault: rename only a chat still called "New conversation" (auto-titles never overwrite a user's name). */
   rename(instance:string,user:string,id:string,title:string,onlyIfDefault?:boolean):Awaitable<boolean>;
