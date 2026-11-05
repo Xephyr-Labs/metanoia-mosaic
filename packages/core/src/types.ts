@@ -79,9 +79,10 @@ export type ChatbotOptions = {
 /**
  * content is the whole message, attached files included. When files are attached, typed is what the
  * user wrote and documents is each file's text, for guards that screen a user's own material
- * differently from their request.
+ * differently from their request. When images are attached, images holds each one's bytes, so a
+ * guard can screen what the model would see in them; content carries no trace of the images.
  */
-export type InputGuardContext = { identity: UserIdentity; content: string; kind: "message" | "memory" | "preferences"; conversationId?: string; typed?: string; documents?: Array<{ name: string; text: string }> };
+export type InputGuardContext = { identity: UserIdentity; content: string; kind: "message" | "memory" | "preferences"; conversationId?: string; typed?: string; documents?: Array<{ name: string; text: string }>; images?: Array<{ mime: string; bytes: Buffer }> };
 export type InputGuardResult = { allow: true } | { allow: false; reply: string };
 export type InputGuard = (context: InputGuardContext) => InputGuardResult | Promise<InputGuardResult>;
 
