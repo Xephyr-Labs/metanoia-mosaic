@@ -1,5 +1,11 @@
 # @metanoia/react
 
+## 0.5.0
+
+### Patch Changes
+
+- @metanoialabs/widget@0.5.0
+
 ## 0.4.0
 
 ### Patch Changes
