@@ -19,7 +19,8 @@ export interface Store {
   hasRequest(id:string,requestId:string):Awaitable<boolean>;
   completeMessage(id:string,content:string,status:string,input?:number,output?:number):Awaitable<void>;
   setSuggestions(id:string,prompts:string[]):Awaitable<void>;
-  rename(instance:string,user:string,id:string,title:string):Awaitable<boolean>;
+  /** onlyIfDefault: rename only a chat still called "New conversation" (auto-titles never overwrite a user's name). */
+  rename(instance:string,user:string,id:string,title:string,onlyIfDefault?:boolean):Awaitable<boolean>;
   deleteConversation(instance:string,user:string,id:string):Awaitable<boolean>;
   prefs(instance:string,user:string):Awaitable<Record<string,unknown>>;
   updatePrefs(instance:string,user:string,value:Record<string,unknown>):Awaitable<void>;

@@ -31,7 +31,11 @@ const EXTENSION_TYPES:Record<string,string>={pdf:"application/pdf",docx:DOCUMENT
 const documentType=(file:File)=>{const sent=file.type.split(";")[0]!.trim().toLowerCase();return sent&&sent!=="application/octet-stream"?sent:EXTENSION_TYPES[file.name.split(".").pop()?.toLowerCase()??""]??sent;};
 const fileName=(name:string)=>name.split(/[\\/]/).pop()!.replace(/[<>"\u0000-\u001f]/g,"").trim().slice(0,120)||"file";
 /** How an attached file's text travels inside the user's message; the widget draws it as a chip. */
-const fileBlock=(name:string,text:string)=>`\n\n<attached-file name="${name}">\n${text.replaceAll("</attached-file>","")}\n</attached-file>`;
+const FILE_START="\n\n<attached-file name=\"";
+// Renaming the closing tag (one pass is enough: "_" is not in the tag) keeps file text from ending its block early.
+const fileBlock=(name:string,text:string)=>`${FILE_START}${name}">\n${text.replaceAll("</attached-file","</attached_file")}\n</attached-file>`;
+/** What the user typed: files always follow it, so it ends where the first file block starts. */
+const typedPart=(content:string)=>{const at=content.indexOf(FILE_START);return at<0?content:content.slice(0,at);};
 const MARKDOWN_LINK=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]{1,2000})\)/g,BARE_LINK=/(?<![(\["'])\bhttps?:\/\/[^\s<>()"'\]]{1,2000}/g;
 
 export function createChatbot(options: ChatbotOptions): Chatbot {
@@ -277,7 +281,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const links=new Map<string,Record<string,unknown>>();
     for(const message of messages){
       const source=from(message.conversation_id);if(!source)continue;
-      const text=message.content.replace(/<attached-file[^>]*>[\s\S]*?<\/attached-file>/g,"");
+      const text=message.role==="user"?typedPart(message.content):message.content;
       const found=[...[...text.matchAll(MARKDOWN_LINK)].map(m=>({url:m[2]!,title:m[1]!})),...[...text.matchAll(BARE_LINK)].map(m=>({url:m[0].replace(/[.,;:!?]+$/,""),title:""}))];
       for(const link of found)if(!links.has(link.url)&&links.size<200)links.set(link.url,{url:link.url,title:link.title||link.url,...source,created_at:message.created_at});
       else if(link.title&&links.get(link.url)?.title===link.url)links.get(link.url)!.title=link.title;
@@ -473,7 +477,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
             }
             const held=suggestionFilter?.flush();if(held){accumulated+=held;send("delta",{text:held});}
             if(hasUsage)send("usage",{input:usageIn,output:usageOut,...(cachedIn?{cachedInput:cachedIn}:{})});
-            await store.completeMessage(assistantId,accumulated,"complete",usageIn,usageOut);answerCompleted=true;if(!priorMessages.length&&conversation.title==="New conversation")try{await store.rename(instance,user,id,typed.replace(/\s+/g," ").trim().slice(0,60));}catch{/* the default title stays */}clearTimeout(timeout);await store.addUsage(instance,user,id,built.estimate,hasUsage?usageIn:undefined,hasUsage?usageOut:undefined,"chat",cachedIn||undefined);await emit("usage",user,{inputEstimate:built.estimate,inputActual:hasUsage?usageIn:undefined,outputActual:hasUsage?usageOut:undefined,...(cachedIn?{cachedInput:cachedIn}:{})});
+            await store.completeMessage(assistantId,accumulated,"complete",usageIn,usageOut);answerCompleted=true;if(conversation.title==="New conversation")try{await store.rename(instance,user,id,typed.replace(/\s+/g," ").trim().slice(0,60),true);}catch{/* the default title stays */}clearTimeout(timeout);await store.addUsage(instance,user,id,built.estimate,hasUsage?usageIn:undefined,hasUsage?usageOut:undefined,"chat",cachedIn||undefined);await emit("usage",user,{inputEstimate:built.estimate,inputActual:hasUsage?usageIn:undefined,outputActual:hasUsage?usageOut:undefined,...(cachedIn?{cachedInput:cachedIn}:{})});
             const suggestionSetting=options.capabilities?.suggestions;
             if(suggestionFilter){
               const prompts=suggestionFilter.suggestions(suggestionSetting?.count??3);

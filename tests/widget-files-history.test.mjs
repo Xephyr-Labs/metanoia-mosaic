@@ -44,11 +44,11 @@ test('attaching a file shows a removable chip and sends it as a document the bub
 });
 
 test('a saved message shows its attached file as a chip, not the file text',async()=>{
- const {host}=setup({'GET /conversations/chat':()=>Response.json({conversation:{id:'chat'},messages:[{id:'1',role:'user',status:'complete',content:'Check this\n\n<attached-file name="cv.pdf">\nSecret long text\n</attached-file>'}]})});
+ const {host}=setup({'GET /conversations/chat':()=>Response.json({conversation:{id:'chat'},messages:[{id:'1',role:'user',status:'complete',content:'Check this\n\n<attached-file name="cv.pdf">\nSecret long text\n</attached-file>\n\n<attached-file name="notes.txt">\nMore\n</attached-file>'}]})});
  const widget=mount(host,{endpoint:'/api',conversationStore:{load:()=>'chat',save(){}}});
  try{
   await widget.ready;await tick();const bubble=host.shadowRoot.querySelector('.msg.user');
-  assert.equal(bubble.querySelector('.chip span').textContent,'cv.pdf');
+  assert.deepEqual([...bubble.querySelectorAll('.chip span')].map(n=>n.textContent),['cv.pdf','notes.txt']);
   assert.doesNotMatch(bubble.textContent,/Secret long text/);assert.match(bubble.textContent,/^Check this/);
  }finally{widget.destroy();}
 });
