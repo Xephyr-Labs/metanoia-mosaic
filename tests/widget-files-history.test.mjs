@@ -32,13 +32,13 @@ test('attaching a file shows a removable chip and sends it as a document the bub
   assert.equal(root.querySelector('.attach').getAttribute('aria-label'),'Attach file');
   assert.match(root.querySelector('input[type=file]').accept,/application\/pdf.*\.pdf/);
   pick(root,[new File(['%PDF'],'transcript.pdf',{type:'application/pdf'}),new File(['x'],'extra.txt',{type:'text/plain'})]);
-  assert.deepEqual([...root.querySelectorAll('.attachments .chip span')].map(n=>n.textContent),['transcript.pdf','extra.txt']);
+  assert.deepEqual([...root.querySelectorAll('.attachments .chip span:not(.kind)')].map(n=>n.textContent),['transcript.pdf','extra.txt']);
   root.querySelectorAll('.attachments .chip button')[1].click();
-  assert.deepEqual([...root.querySelectorAll('.attachments .chip span')].map(n=>n.textContent),['transcript.pdf']);
+  assert.deepEqual([...root.querySelectorAll('.attachments .chip span:not(.kind)')].map(n=>n.textContent),['transcript.pdf']);
   root.querySelector('form').dispatchEvent(new Event('submit',{cancelable:true}));await tick();await tick();
   const sent=JSON.parse(calls.find(c=>c.path.endsWith('/messages')).body);
   assert.equal(sent.content,'Take a look at this file.');assert.deepEqual(sent.documentIds,['doc-1']);assert.deepEqual(sent.mediaIds,[]);
-  assert.equal(root.querySelector('.msg.user .chip span').textContent,'transcript.pdf');
+  assert.equal(root.querySelector('.msg.user .chip span:not(.kind)').textContent,'transcript.pdf');
   assert.equal(root.querySelectorAll('.attachments .chip').length,0);
  }finally{widget.destroy();}
 });
@@ -48,7 +48,7 @@ test('a saved message shows its attached file as a chip, not the file text',asyn
  const widget=mount(host,{endpoint:'/api',conversationStore:{load:()=>'chat',save(){}}});
  try{
   await widget.ready;await tick();const bubble=host.shadowRoot.querySelector('.msg.user');
-  assert.deepEqual([...bubble.querySelectorAll('.chip span')].map(n=>n.textContent),['cv.pdf','notes.txt']);
+  assert.deepEqual([...bubble.querySelectorAll('.chip span:not(.kind)')].map(n=>n.textContent),['cv.pdf','notes.txt']);
   assert.doesNotMatch(bubble.textContent,/Secret long text/);assert.match(bubble.textContent,/^Check this/);
  }finally{widget.destroy();}
 });
@@ -82,7 +82,7 @@ test('Shared sorts links into host groups, lists files, and opens the chat a fil
   assert.deepEqual(tabs.map(t=>t.textContent),['Journeys','Links','Media','Files']);
   assert.deepEqual([...root.querySelectorAll('.shared a')].map(a=>a.textContent),['Your journey']);
   tabs[1].click();assert.deepEqual([...root.querySelectorAll('.shared a')].map(a=>a.textContent),['Fees']);
-  tabs[2].click();assert.equal(root.querySelector('.shared .empty').textContent,'Nothing shared yet.');
+  tabs[2].click();assert.equal(root.querySelector('.shared .empty').textContent,'Images you send will appear here.');
   tabs[3].click();root.querySelector('.shared .name').click();await tick();
   assert.ok(calls.some(c=>c.path==='/conversations/c2'&&c.method==='GET'));
   assert.ok(root.querySelector('.compose'));
