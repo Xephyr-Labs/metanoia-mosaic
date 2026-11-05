@@ -5,6 +5,12 @@ export type ChatbotTool = { name: string; description: string; parameters: Recor
 
 export type Capabilities = {
   images?: { enabled: boolean; maxBytes?: number; maxCount?: number; maxDimension?: number };
+  /**
+   * Files the user attaches for the model to read (PDF, Word, plain text). Mosaic ships no parsers:
+   * `extract` turns an upload into text; without it only text/* files are read (as UTF-8). The text
+   * (cut to maxChars) is added to the user's message, so later turns still see it.
+   */
+  documents?: { enabled: boolean; extract?: (file: { bytes: Buffer; mime: string; name: string }) => string | Promise<string>; types?: string[]; maxBytes?: number; maxChars?: number; maxCount?: number };
   voiceInput?: { enabled: boolean; baseUrl?: string; apiKey?: string; model?: string; maxBytes?: number; maxSeconds?: number };
   voiceOutput?: { enabled: boolean; baseUrl?: string; apiKey?: string; model?: string; voice?: string };
   /** Opt-in contextual follow-up prompts. Generates one additional short provider completion per turn. */
@@ -75,7 +81,7 @@ export type InputGuardResult = { allow: true } | { allow: false; reply: string }
 export type InputGuard = (context: InputGuardContext) => InputGuardResult | Promise<InputGuardResult>;
 
 export type ChatbotEvent = { type: string; instanceId: string; userId?: string; at: string; data?: Record<string, unknown> };
-export type WidgetConfig = { branding: Required<Pick<Branding, "name" | "greeting" | "theme" | "placement" | "width" | "height">> & Branding; capabilities: { images: boolean; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; richResponses: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number } };
+export type WidgetConfig = { branding: Required<Pick<Branding, "name" | "greeting" | "theme" | "placement" | "width" | "height">> & Branding; capabilities: { images: boolean; documents: boolean; documentTypes?: string[]; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; richResponses: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number } };
 export type Chatbot = {
   ready: Promise<void>;
   handle(request: Request): Promise<Response>;

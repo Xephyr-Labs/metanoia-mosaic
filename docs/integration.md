@@ -14,7 +14,7 @@ const chatbot = createChatbot({
 });
 ```
 
-For a Fetch host, pass requests to `chatbot.handle(request)` and return its `Response`. For Express, mount `expressHandler(chatbot)` at a path. Await `chatbot.ready` before accepting traffic; this completes SQLite setup or PostgreSQL migrations and surfaces configuration/storage failures during startup. The handler serves routes such as `/config`, `/conversations`, `/preferences`, `/memories`, `/media`, `/transcriptions`, and `/speech` below its mount point. Call `await chatbot.close()` on shutdown.
+For a Fetch host, pass requests to `chatbot.handle(request)` and return its `Response`. For Express, mount `expressHandler(chatbot)` at a path. Await `chatbot.ready` before accepting traffic; this completes SQLite setup or PostgreSQL migrations and surfaces configuration/storage failures during startup. The handler serves routes such as `/config`, `/conversations`, `/preferences`, `/memories`, `/media`, `/shared`, `/transcriptions`, and `/speech` below its mount point. Call `await chatbot.close()` on shutdown.
 
 For a local demo only, `anonymous: true` issues an opaque HTTP-only browser cookie. It keeps a stable local identity across process restarts. Do not expose an anonymous instance to the public internet.
 
