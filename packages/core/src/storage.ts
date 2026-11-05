@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { Row, Store as StoreContract, StoredMemory } from "./storage/interface.js";
+import type { MediaSummary, Row, SharedMessage, Store as StoreContract, StoredMedia, StoredMemory } from "./storage/interface.js";
 
 export class SqliteStore implements StoreContract {
   private db: Database.Database;
@@ -13,7 +13,7 @@ export class SqliteStore implements StoreContract {
     this.db.pragma("journal_mode = WAL");
     this.db.pragma("foreign_keys = ON");
     const schemaVersion=(this.db.pragma("user_version",{simple:true}) as number)??0;
-    if(schemaVersion>7)throw new Error(`Chatbot database schema ${schemaVersion} is newer than this package supports.`);
+    if(schemaVersion>8)throw new Error(`Chatbot database schema ${schemaVersion} is newer than this package supports.`);
     if(schemaVersion===0)this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (instance_id TEXT NOT NULL, user_id TEXT NOT NULL, profile TEXT NOT NULL DEFAULT '{}', preferences TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, PRIMARY KEY(instance_id,user_id));
       CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, instance_id TEXT NOT NULL, user_id TEXT NOT NULL, title TEXT NOT NULL DEFAULT 'New conversation', summary TEXT, summary_message_count INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -34,6 +34,7 @@ export class SqliteStore implements StoreContract {
     if(schemaVersion>=1&&schemaVersion<=4)this.db.exec("ALTER TABLE usage ADD COLUMN cached_input INTEGER; PRAGMA user_version = 5;");
     if(schemaVersion<6)this.db.exec("ALTER TABLE messages ADD COLUMN suggestions TEXT NOT NULL DEFAULT '[]'; PRAGMA user_version = 6;");
     if(schemaVersion<7)this.db.exec("ALTER TABLE messages ADD COLUMN media_ids TEXT NOT NULL DEFAULT '[]'; PRAGMA user_version = 7;");
+    if(schemaVersion<8)this.db.exec(`${this.db.prepare("SELECT 1 FROM pragma_table_info('media') WHERE name='name'").get()?"":"ALTER TABLE media ADD COLUMN name TEXT;"} PRAGMA user_version = 8;`);
   }
   user(instance: string, user: string, profile?: Record<string, unknown>) {
     const at = new Date().toISOString();
@@ -56,6 +57,7 @@ export class SqliteStore implements StoreContract {
   addMessage(id:string,role:string,content:string,status="complete",requestId?:string,mediaIds:string[]=[]) { const at=new Date().toISOString();const msg=crypto.randomUUID();this.db.prepare("INSERT INTO messages(id,conversation_id,role,content,status,request_id,created_at,media_ids) VALUES(?,?,?,?,?,?,?,?)").run(msg,id,role,content,status,requestId??null,at,JSON.stringify(mediaIds));this.db.prepare("UPDATE conversations SET updated_at=? WHERE id=?").run(at,id);return msg; }
   hasRequest(id:string,requestId:string) { return !!this.db.prepare("SELECT 1 FROM messages WHERE conversation_id=? AND request_id=?").get(id,requestId); }
   completeMessage(id:string,content:string,status:string,input?:number,output?:number) { this.db.prepare("UPDATE messages SET content=?,status=?,usage_input=?,usage_output=? WHERE id=?").run(content,status,input??null,output??null,id); }
+  rename(instance:string,user:string,id:string,title:string,onlyIfDefault=false) { return this.db.prepare(`UPDATE conversations SET title=? WHERE instance_id=? AND user_id=? AND id=?${onlyIfDefault?" AND title='New conversation'":""}`).run(title,instance,user,id).changes>0; }
   deleteConversation(instance:string,user:string,id:string) { return this.db.transaction(()=>{this.db.prepare("DELETE FROM memories WHERE instance_id=? AND user_id=? AND source_conversation=?").run(instance,user,id);this.db.prepare("DELETE FROM media WHERE instance_id=? AND user_id=? AND conversation_id=?").run(instance,user,id);return this.db.prepare("DELETE FROM conversations WHERE instance_id=? AND user_id=? AND id=?").run(instance,user,id).changes>0;})(); }
   prefs(instance:string,user:string) { const row=this.db.prepare("SELECT preferences FROM users WHERE instance_id=? AND user_id=?").get(instance,user) as {preferences:string}|undefined;return row?JSON.parse(row.preferences):{}; }
   updatePrefs(instance:string,user:string,value:Record<string,unknown>) { this.db.prepare("UPDATE users SET preferences=? WHERE instance_id=? AND user_id=?").run(JSON.stringify(value),instance,user); }
@@ -65,9 +67,11 @@ export class SqliteStore implements StoreContract {
   deleteMemory(instance:string,user:string,id:string) { return this.db.prepare("DELETE FROM memories WHERE instance_id=? AND user_id=? AND id=?").run(instance,user,id).changes>0; }
   addUsage(instance:string,user:string,conversation:string,inputEstimate:number,inputActual:number|undefined,outputActual:number|undefined,kind="chat",cachedInput?:number) { this.db.prepare("INSERT INTO usage(id,instance_id,user_id,conversation_id,input_estimate,input_actual,output_actual,cached_input,kind,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)").run(crypto.randomUUID(),instance,user,conversation,inputEstimate,inputActual??null,outputActual??null,cachedInput??null,kind,new Date().toISOString()); }
   userData(instance:string,user:string) { const tx=this.db.transaction(()=>{this.db.prepare("DELETE FROM media WHERE instance_id=? AND user_id=?").run(instance,user);this.db.prepare("DELETE FROM usage WHERE instance_id=? AND user_id=?").run(instance,user);this.db.prepare("DELETE FROM memories WHERE instance_id=? AND user_id=?").run(instance,user);this.db.prepare("DELETE FROM conversations WHERE instance_id=? AND user_id=?").run(instance,user);this.db.prepare("DELETE FROM user_rate_limits WHERE instance_id=? AND user_id=?").run(instance,user);this.db.prepare("DELETE FROM users WHERE instance_id=? AND user_id=?").run(instance,user);});tx(); }
-  putMedia(instance:string,user:string,conversation:string|undefined,mime:string,bytes:Buffer) { const id=crypto.randomUUID();this.db.prepare("INSERT INTO media(id,instance_id,user_id,conversation_id,mime,bytes,created_at) VALUES(?,?,?,?,?,?,?)").run(id,instance,user,conversation??null,mime,bytes,new Date().toISOString());return id; }
-  getMedia(instance:string,user:string,id:string) { return this.db.prepare("SELECT mime,bytes FROM media WHERE instance_id=? AND user_id=? AND id=?").get(instance,user,id) as {mime:string;bytes:Buffer}|undefined; }
-  mediaForMessage(instance:string,user:string,id:string,conversation:string) { return this.db.prepare("SELECT mime,bytes FROM media WHERE instance_id=? AND user_id=? AND id=? AND conversation_id=?").get(instance,user,id,conversation) as {mime:string;bytes:Buffer}|undefined; }
+  putMedia(instance:string,user:string,conversation:string|undefined,mime:string,bytes:Buffer,name?:string) { const id=crypto.randomUUID();this.db.prepare("INSERT INTO media(id,instance_id,user_id,conversation_id,mime,bytes,name,created_at) VALUES(?,?,?,?,?,?,?,?)").run(id,instance,user,conversation??null,mime,bytes,name??null,new Date().toISOString());return id; }
+  mediaList(instance:string,user:string,limit:number) { return this.db.prepare("SELECT id,conversation_id,mime,name,created_at FROM media WHERE instance_id=? AND user_id=? ORDER BY created_at DESC LIMIT ?").all(instance,user,limit) as MediaSummary[]; }
+  recentMessages(instance:string,user:string,limit:number) { return this.db.prepare("SELECT m.conversation_id,m.role,substr(m.content,1,8000) AS content,m.created_at FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.instance_id=? AND c.user_id=? AND m.status='complete' ORDER BY m.created_at DESC LIMIT ?").all(instance,user,limit) as SharedMessage[]; }
+  getMedia(instance:string,user:string,id:string) { return this.db.prepare("SELECT mime,bytes,name FROM media WHERE instance_id=? AND user_id=? AND id=?").get(instance,user,id) as {mime:string;bytes:Buffer}|undefined; }
+  mediaForMessage(instance:string,user:string,id:string,conversation:string) { return this.db.prepare("SELECT mime,bytes,name FROM media WHERE instance_id=? AND user_id=? AND id=? AND conversation_id=?").get(instance,user,id,conversation) as StoredMedia|undefined; }
   tryLock(key:string) { if(this.activeLocks.has(key))return null;this.activeLocks.add(key);let released=false;return ()=>{if(released)return;released=true;this.activeLocks.delete(key);}; }
   hitRateLimit(instance:string,user:string,limit:number,windowMs:number) { const now=Date.now();this.db.prepare("INSERT INTO user_rate_limits(instance_id,user_id,window_start,request_count) VALUES(?,?,?,1) ON CONFLICT(instance_id,user_id) DO UPDATE SET window_start=CASE WHEN user_rate_limits.window_start+?<=? THEN ? ELSE user_rate_limits.window_start END,request_count=CASE WHEN user_rate_limits.window_start+?<=? THEN 1 ELSE user_rate_limits.request_count+1 END").run(instance,user,now,windowMs,now,now,windowMs,now);const row=this.db.prepare("SELECT request_count FROM user_rate_limits WHERE instance_id=? AND user_id=?").get(instance,user) as {request_count:number};return row.request_count<=limit; }
   close() { this.db.close(); }

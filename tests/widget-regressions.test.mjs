@@ -55,13 +55,13 @@ test('a rejected preference save is shown as failure rather than saved',async()=
  const host=setup();const fetcher=globalThis.fetch;
  globalThis.fetch=async(input,init)=>String(input).endsWith('/preferences')?Response.json(init?.method==='PUT'?{error:{message:'Expired token'}}:{preferences:{}},{status:init?.method==='PUT'?401:200}):fetcher(input,init);
  const widget=mount(host,{endpoint:'/api'});
- try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const save=host.shadowRoot.querySelectorAll('.settings .action')[0];save.click();await tick();assert.equal(host.shadowRoot.querySelector('.settings .field-error')?.textContent,'Unable to save. Try again.');assert.equal(save.textContent,'Save preferences');}finally{widget.destroy();}
+ try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[3].click();await tick();const save=host.shadowRoot.querySelectorAll('.settings .action')[0];save.click();await tick();assert.equal(host.shadowRoot.querySelector('.settings .field-error')?.textContent,'Unable to save. Try again.');assert.equal(save.textContent,'Save preferences');}finally{widget.destroy();}
 });
 test('a rejected memory deletion keeps the memory visible',async()=>{
  const host=setup();const fetcher=globalThis.fetch;
  globalThis.fetch=async(input,init)=>String(input).endsWith('/memories')?Response.json({memories:[{id:'memory',content:'Important detail'}]}):init?.method==='DELETE'?Response.json({error:{message:'Expired token'}},{status:401}):fetcher(input,init);
  const widget=mount(host,{endpoint:'/api'});
- try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[2].click();await tick();const row=host.shadowRoot.querySelector('.memory');row.querySelectorAll('button')[1].click();await tick();assert.equal(row.isConnected,true);assert.equal(row.querySelector('.field-error')?.textContent,'Unable to remove. Try again.');}finally{widget.destroy();}
+ try{await widget.ready;host.shadowRoot.querySelectorAll('.toolbar button')[3].click();await tick();const row=host.shadowRoot.querySelector('.memory');row.querySelectorAll('button')[1].click();await tick();assert.equal(row.isConnected,true);assert.equal(row.querySelector('.field-error')?.textContent,'Unable to remove. Try again.');}finally{widget.destroy();}
 });
 test('a stream that ends without done or error is reported as interrupted',async()=>{
  const host=setup({pending:true});const widget=mount(host,{endpoint:'/api'});

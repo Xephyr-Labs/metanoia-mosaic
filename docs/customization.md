@@ -46,6 +46,19 @@ The widget uses text nodes for branding and user messages; assistant replies ren
 
 The current widget supports history, new conversations, preference JSON editing, manually saved memories, image attachment when enabled, microphone transcription when enabled, and on-demand speech playback when enabled. Image previews and guided preference fields are not included yet.
 
+## History and the Shared view
+
+Each chat is named after its first message once the first answer arrives. People can rename a chat from History (`PATCH /conversations/:id` with `{ "title" }`, 1–120 characters).
+
+The Shared view (next to History) collects what has passed through every chat: links from messages, images people sent, and files they attached. Each item leads back to the chat it came from (`GET /shared`). Pass `linkGroups` to give links your app recognizes their own tab; a matched link leaves the plain Links tab:
+
+```js
+mount(host, {
+  endpoint: "/api/chatbot",
+  linkGroups: [{ label: "Orders", match: (url) => url.pathname.startsWith("/orders/") }],
+});
+```
+
 ## Localization and conversation persistence
 
 Use `locale` to set the widget language metadata and automatic text direction, or set `dir` to `ltr` or `rtl`. Pass `labels` to translate visible controls, statuses, and accessibility names. App-provided `greeting` and suggested prompts remain independent.

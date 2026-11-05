@@ -9,9 +9,15 @@ export type NativeUploadFile = { uri: string; name: string; type: string };
 export type UploadFile = Blob | NativeUploadFile;
 
 export type ConversationSummary = { id: string; title: string; created_at: string; updated_at: string };
+export type SharedSource = { conversationId: string; conversationTitle: string; created_at: string };
+export type SharedItems = {
+  links: Array<SharedSource & { url: string; title: string }>;
+  media: Array<SharedSource & { id: string; mime: string }>;
+  files: Array<SharedSource & { id: string; name: string }>;
+};
 export type ChatbotConfig = {
   branding: Record<string, unknown>;
-  capabilities: { images: boolean; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number };
+  capabilities: { images: boolean; documents?: boolean; documentTypes?: string[]; voiceInput: boolean; voiceOutput: boolean; suggestions: boolean; suggestionCount?: number; voiceInputMaxSeconds?: number };
 };
 export type ChatbotEvent =
   | { type: "delta"; data: { text: string } }
@@ -105,6 +111,9 @@ export function createChatbotClient(options: ChatbotClientOptions) {
     async conversations(signal?: AbortSignal) { return request<{ conversations: ConversationSummary[] }>("/conversations", { signal }); },
     async createConversation(signal?: AbortSignal) { return request<{ conversation: ConversationSummary }>("/conversations", { method: "POST", body: "{}", signal }); },
     async conversation(id: string, signal?: AbortSignal) { return request<{ conversation: ConversationSummary; messages: Array<Record<string, unknown>> }>(`/conversations/${encodeURIComponent(id)}`, { signal }); },
+    async renameConversation(id: string, title: string, signal?: AbortSignal) { return request<{ conversation: ConversationSummary }>(`/conversations/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }), signal }); },
+    /** Links, images, and files from the user's recent conversations. */
+    async shared(signal?: AbortSignal) { return request<SharedItems>("/shared", { signal }); },
     async deleteConversation(id: string, signal?: AbortSignal) { return request<void>(`/conversations/${encodeURIComponent(id)}`, { method: "DELETE", signal }); },
     async preferences(signal?: AbortSignal) { return request<{ preferences: Record<string, unknown> }>("/preferences", { signal }); },
     async updatePreferences(preferences: Record<string, unknown>, signal?: AbortSignal) { return request<{ preferences: Record<string, unknown> }>("/preferences", { method: "PUT", body: JSON.stringify({ preferences }), signal }); },
@@ -118,7 +127,15 @@ export function createChatbotClient(options: ChatbotClientOptions) {
       form.append("conversationId", conversationId);
       if (typeof Blob !== "undefined" && file instanceof Blob) form.append("file", file, filename);
       else form.append("file", file as unknown as string);
-      return request<{ mediaId: string; mime: string; width: number; height: number }>("/media", { method: "POST", body: form, signal });
+      return request<{ mediaId: string; kind: "image"; mime: string; width: number; height: number }>("/media", { method: "POST", body: form, signal });
+    },
+    /** Upload a PDF, Word, or text file for the model to read; send its mediaId in documentIds. */
+    async uploadDocument(conversationId: string, file: UploadFile, filename = "file", signal?: AbortSignal) {
+      const form = new FormData();
+      form.append("conversationId", conversationId);
+      if (typeof Blob !== "undefined" && file instanceof Blob) form.append("file", file, filename);
+      else form.append("file", file as unknown as string);
+      return request<{ mediaId: string; kind: "document"; name: string; mime: string; chars: number }>("/media", { method: "POST", body: form, signal });
     },
     async transcribe(file: UploadFile, filename = "recording.webm", signal?: AbortSignal) {
       const form = new FormData();
@@ -138,14 +155,14 @@ export function createChatbotClient(options: ChatbotClientOptions) {
       }
       return response.blob();
     },
-    async *sendMessage(conversationId: string, input: { content: string; requestId?: string; mediaIds?: string[]; signal?: AbortSignal }): AsyncGenerator<ChatbotEvent> {
+    async *sendMessage(conversationId: string, input: { content: string; requestId?: string; mediaIds?: string[]; documentIds?: string[]; signal?: AbortSignal }): AsyncGenerator<ChatbotEvent> {
       const configured = typeof options.headers === "function" ? await options.headers() : options.headers;
       const headers = new Headers(configured);
       headers.set("content-type", "application/json");
       const response = await fetcher(`${endpoint}/conversations/${encodeURIComponent(conversationId)}/messages`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ content: input.content, requestId: input.requestId, mediaIds: input.mediaIds }),
+        body: JSON.stringify({ content: input.content, requestId: input.requestId, mediaIds: input.mediaIds, documentIds: input.documentIds }),
         credentials: options.credentials ?? "include",
         signal: input.signal,
       });

@@ -212,8 +212,8 @@ The model calls the tool, Mosaic validates the arguments against your schema, ru
 | **Suggested follow-ups** | Optional suggestions after each answer. They're saved with the message and come back when history is reopened. |
 | **Memory and context** | Profile data from your app, user preferences, automatically extracted memories, and rolling conversation summaries, all kept within a token budget you configure. |
 | **Tools and web search** | Server-side function calling with schema validation and timeouts. Optional OpenRouter web search with clickable citations. |
-| **Images and voice** | Image input with server-side format and size checks. Voice input through transcription, and spoken replies. Each one can be turned on separately. |
-| **History** | Conversations persist per user. History, new chat, and resume after reload (`conversationStore`). |
+| **Images, files, and voice** | Image input with server-side format and size checks. File attachments (PDF, Word, text) read into the message by your own extractor. Voice input through transcription, and spoken replies. Each one can be turned on separately. |
+| **History** | Conversations persist per user, named after their first message and renamable. History, new chat, resume after reload (`conversationStore`), and a Shared view of the links, images, and files from every chat. |
 | **Brandable UI** | Name, avatar, greeting, starter prompts, colors, font, light/dark/system theme, placement, size, bubble or button launcher. |
 | **International** | Every label can be translated. Automatic right-to-left layout for Arabic, Hebrew, Persian, Urdu, and more. |
 | **Accessible** | Keyboard operable (Enter sends, Shift+Enter adds a line, Escape closes), visible focus rings, live status announcements, reduced-motion support. |

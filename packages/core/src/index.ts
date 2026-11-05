@@ -25,6 +25,18 @@ async function readJson(request:Request):Promise<Record<string,unknown>>{
   return body as Record<string,unknown>;
 }
 async function readForm(request:Request){try{return await request.formData();}catch{throw new ChatbotError("invalid_input","Request body must be multipart form data.");}}
+const TEXT_DOCUMENTS=["text/plain","text/markdown","text/csv"],DOCUMENTS=["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document",...TEXT_DOCUMENTS];
+const EXTENSION_TYPES:Record<string,string>={pdf:"application/pdf",docx:DOCUMENTS[1]!,txt:"text/plain",md:"text/markdown",csv:"text/csv"};
+/** The upload's type, from the browser or, when it sends none or octet-stream (as for .md), the file extension. */
+const documentType=(file:File)=>{const sent=file.type.split(";")[0]!.trim().toLowerCase();return sent&&sent!=="application/octet-stream"?sent:EXTENSION_TYPES[file.name.split(".").pop()?.toLowerCase()??""]??sent;};
+const fileName=(name:string)=>name.split(/[\\/]/).pop()!.replace(/[<>"\u0000-\u001f]/g,"").trim().slice(0,120)||"file";
+/** How an attached file's text travels inside the user's message; the widget draws it as a chip. */
+const FILE_START="\n\n<attached-file name=\"";
+// Renaming the closing tag (one pass is enough: "_" is not in the tag) keeps file text from ending its block early.
+const fileBlock=(name:string,text:string)=>`${FILE_START}${name}">\n${text.replaceAll("</attached-file","</attached_file")}\n</attached-file>`;
+/** What the user typed: files always follow it, so it ends where the first file block starts. */
+const typedPart=(content:string)=>{const at=content.indexOf(FILE_START);return at<0?content:content.slice(0,at);};
+const MARKDOWN_LINK=/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]{1,2000})\)/g,BARE_LINK=/(?<![(\["'])\bhttps?:\/\/[^\s<>()"'\]]{1,2000}/g;
 
 export function createChatbot(options: ChatbotOptions): Chatbot {
   validateOptions(options);
@@ -144,7 +156,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       if(request.method!=="GET"&&request.method!=="HEAD"){
         const length=Number(request.headers.get("content-length")??0);
         const incomingPath=new URL(request.url).pathname;
-        const cap=incomingPath.endsWith("/transcriptions")?(options.capabilities?.voiceInput?.maxBytes??15_000_000)+100_000:incomingPath.endsWith("/media")?(options.capabilities?.images?.maxBytes??5_000_000)+100_000:2_000_000;
+        const cap=incomingPath.endsWith("/transcriptions")?(options.capabilities?.voiceInput?.maxBytes??15_000_000)+100_000:incomingPath.endsWith("/media")?Math.max(options.capabilities?.images?.maxBytes??5_000_000,options.capabilities?.documents?.enabled?options.capabilities.documents.maxBytes??10_000_000:0)+100_000:2_000_000;
         if(length>cap)throw new ChatbotError("request_too_large","Request body is too large.",413);
         const origin=request.headers.get("origin");
         if(!origin&&request.headers.get("sec-fetch-site")==="cross-site")throw new ChatbotError("origin_denied","Cross-site requests are not allowed.",403);
@@ -165,7 +177,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       }
       else if(route==="/config"&&request.method==="GET"){
         const branding=options.branding??{}, {personality:_privateInstructions,...publicBranding}=branding;
-        const config:WidgetConfig={branding:{...publicBranding,name:branding.name??"Assistant",greeting:branding.greeting??"Hi! How can I help?",theme:branding.theme??"system",placement:branding.placement??"bottom-right",width:branding.width??380,height:branding.height??640},capabilities:{images:!!options.capabilities?.images?.enabled,voiceInput:!!options.capabilities?.voiceInput?.enabled,voiceOutput:!!options.capabilities?.voiceOutput?.enabled,suggestions:!!options.capabilities?.suggestions?.enabled,richResponses:options.capabilities?.richResponses?.enabled!==false,...(options.capabilities?.suggestions?.enabled?{suggestionCount:options.capabilities.suggestions.count??3}:{}),voiceInputMaxSeconds:options.capabilities?.voiceInput?.maxSeconds??60}};
+        const config:WidgetConfig={branding:{...publicBranding,name:branding.name??"Assistant",greeting:branding.greeting??"Hi! How can I help?",theme:branding.theme??"system",placement:branding.placement??"bottom-right",width:branding.width??380,height:branding.height??640},capabilities:{images:!!options.capabilities?.images?.enabled,documents:!!options.capabilities?.documents?.enabled,...(options.capabilities?.documents?.enabled?{documentTypes:documentTypes()}:{}),voiceInput:!!options.capabilities?.voiceInput?.enabled,voiceOutput:!!options.capabilities?.voiceOutput?.enabled,suggestions:!!options.capabilities?.suggestions?.enabled,richResponses:options.capabilities?.richResponses?.enabled!==false,...(options.capabilities?.suggestions?.enabled?{suggestionCount:options.capabilities.suggestions.count??3}:{}),voiceInputMaxSeconds:options.capabilities?.voiceInput?.maxSeconds??60}};
         response=json(config);
       } else {
         const resolved=await resolveIdentity(request),identity=resolved.identity;
@@ -178,12 +190,15 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
           // The deletion branch already produced its response.
         }
         else if(route==="/media"&&request.method==="POST"){
-          const setting=options.capabilities?.images;if(!setting?.enabled)throw new ChatbotError("capability_disabled","Image input is disabled.",403);
           const form=await readForm(request),file=form.get("file"),conversation=form.get("conversationId");
+          if(options.capabilities?.documents?.enabled&&file instanceof File&&!file.type.startsWith("image/"))response=await uploadDocument(file,conversation,identity.userId);
+          else{
+          const setting=options.capabilities?.images;if(!setting?.enabled)throw new ChatbotError("capability_disabled","Image input is disabled.",403);
           if(!(file instanceof File)||file.size>(setting.maxBytes??5_000_000))throw new ChatbotError("image_too_large","Image exceeds the configured size limit.",413);
           if(typeof conversation!=="string"||!await store.conversation(instance,identity.userId,conversation))throw new ChatbotError("not_found","Conversation not found.",404);
           const bytes=Buffer.from(await file.arrayBuffer()),info=inspectImage(bytes,file.type,setting.maxDimension??4096),mediaId=await store.putMedia(instance,identity.userId,conversation,info.mime,bytes);
-          response=json({mediaId,mime:info.mime,width:info.width,height:info.height},201);
+          response=json({mediaId,kind:"image",mime:info.mime,width:info.width,height:info.height},201);
+          }
         }
         else if(route==="/transcriptions"&&request.method==="POST"){
           const setting=options.capabilities?.voiceInput;if(!setting?.enabled)throw new ChatbotError("capability_disabled","Voice input is disabled.",403);
@@ -201,11 +216,12 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
           if(!upstream.ok)throw new ChatbotError("provider_error","Speech generation failed.",502);response=new Response(upstream.body,{headers:{"content-type":upstream.headers.get("content-type")??"audio/mpeg","cache-control":"no-store"}});
         }
         else if(route.startsWith("/media/")&&request.method==="GET"){
-          if(!options.capabilities?.images?.enabled)throw new ChatbotError("capability_disabled","Image input is disabled.",403);
+          if(!options.capabilities?.images?.enabled&&!options.capabilities?.documents?.enabled)throw new ChatbotError("capability_disabled","Image input is disabled.",403);
           const media=await store.getMedia(instance,identity.userId,route.split("/").pop()!);response=media?new Response(new Uint8Array(media.bytes),{headers:{"content-type":media.mime,"cache-control":"private, no-store","x-content-type-options":"nosniff"}}):json({error:{code:"not_found",message:"Media not found."}},404);
         }
         else if(route==="/conversations"&&request.method==="GET")response=json({conversations:await store.list(instance,identity.userId)});
         else if(route==="/conversations"&&request.method==="POST")response=json({conversation:await store.create(instance,identity.userId)},201);
+        else if(route==="/shared"&&request.method==="GET")response=json(await shared(identity.userId));
         else if(route==="/preferences"&&request.method==="GET")response=json({preferences:await store.prefs(instance,identity.userId)});
         else if(route==="/preferences"&&request.method==="PUT"){
           const body=await readJson(request) as {preferences?:unknown};if(!body.preferences||typeof body.preferences!=="object"||Array.isArray(body.preferences)||JSON.stringify(body.preferences).length>20_000)throw new ChatbotError("invalid_input","preferences must be an object under 20 KB.");
@@ -228,6 +244,11 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
           const parts=route.split("/"),id=parts[2]!;
           if(parts.length===3&&request.method==="GET"){
             const conversation=await store.conversation(instance,identity.userId,id);response=conversation?json({conversation,messages:await store.messages(id)}):json({error:{code:"not_found",message:"Conversation not found."}},404);
+          } else if(parts.length===3&&request.method==="PATCH"){
+            const body=await readJson(request) as {title?:unknown},title=typeof body.title==="string"?body.title.replace(/\s+/g," ").trim():"";
+            if(!title||title.length>120)throw new ChatbotError("invalid_input","title must be 1 to 120 characters.");
+            if(!await store.rename(instance,identity.userId,id,title))throw new ChatbotError("not_found","Conversation not found.",404);
+            response=json({conversation:await store.conversation(instance,identity.userId,id)});
           } else if(parts.length===3&&request.method==="DELETE")response=await store.deleteConversation(instance,identity.userId,id)?new Response(null,{status:204}):json({error:{code:"not_found",message:"Conversation not found."}},404);
       else if(parts[3]==="messages"&&request.method==="POST")response=await sendMessage(request,id,identity);
           else response=json({error:{code:"not_found",message:"Route not found."}},404);
@@ -237,6 +258,36 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
       await emit("request",undefined,{method:request.method,route,status:response.status});
       return withCors(response,request);
     }catch(error){await emit("error",undefined,{code:error instanceof ChatbotError?error.code:"internal_error"});return withCors(errorResponse(error),request);}
+  }
+  function documentTypes(){const setting=options.capabilities?.documents;return setting?.types??(setting?.extract?DOCUMENTS:TEXT_DOCUMENTS);}
+  /** Read an attached file into text now, so a send only has to add it to the message. */
+  async function uploadDocument(file:File,conversation:FormDataEntryValue|null,user:string):Promise<Response>{
+    const setting=options.capabilities!.documents!,mime=documentType(file),name=fileName(file.name);
+    if(file.size>(setting.maxBytes??10_000_000))throw new ChatbotError("document_too_large","File exceeds the configured size limit.",413);
+    if(!documentTypes().includes(mime))throw new ChatbotError("invalid_document","This file type is not supported.",415);
+    if(typeof conversation!=="string"||!await store.conversation(instance,user,conversation))throw new ChatbotError("not_found","Conversation not found.",404);
+    const bytes=Buffer.from(await file.arrayBuffer());let text:unknown;
+    try{text=setting.extract?await setting.extract({bytes,mime,name}):bytes.toString("utf8");}catch{throw new ChatbotError("document_unreadable","This file could not be read.",422);}
+    const clean=(typeof text==="string"?text:"").replace(/\u0000/g,"").trim().slice(0,setting.maxChars??20_000);
+    if(!clean)throw new ChatbotError("document_unreadable","No readable text was found in this file.",422);
+    const mediaId=await store.putMedia(instance,user,conversation,"text/plain",Buffer.from(clean),name);
+    return json({mediaId,kind:"document",name,mime:"text/plain",chars:clean.length},201);
+  }
+  /** Links, images, and files from the user's recent conversations, newest first, each with the chat it came from. */
+  async function shared(user:string){
+    const [conversations,media,messages]=await Promise.all([store.list(instance,user),store.mediaList(instance,user,200),store.recentMessages(instance,user,500)]);
+    const titles=new Map((conversations as Array<{id:string;title:string}>).map(c=>[c.id,c.title]));
+    const from=(conversationId:string|null)=>conversationId&&titles.has(conversationId)?{conversationId,conversationTitle:titles.get(conversationId)!}:undefined;
+    const links=new Map<string,Record<string,unknown>>();
+    for(const message of messages){
+      const source=from(message.conversation_id);if(!source)continue;
+      const text=message.role==="user"?typedPart(message.content):message.content;
+      const found=[...[...text.matchAll(MARKDOWN_LINK)].map(m=>({url:m[2]!,title:m[1]!})),...[...text.matchAll(BARE_LINK)].map(m=>({url:m[0].replace(/[.,;:!?]+$/,""),title:""}))];
+      for(const link of found)if(!links.has(link.url)&&links.size<200)links.set(link.url,{url:link.url,title:link.title||link.url,...source,created_at:message.created_at});
+      else if(link.title&&links.get(link.url)?.title===link.url)links.get(link.url)!.title=link.title;
+    }
+    const items=media.flatMap(item=>{const source=from(item.conversation_id);return source?[{id:item.id,mime:item.mime,name:item.name,...source,created_at:item.created_at}]:[];});
+    return {links:[...links.values()],media:items.filter(item=>item.mime.startsWith("image/")).map(({name:_name,...item})=>item),files:items.filter(item=>item.mime==="text/plain"&&item.name)};
   }
   /** Stop the user's active replies, then delete everything stored for them. */
   async function purgeUser(userId:string){
@@ -251,10 +302,10 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
   }
   const WITHHELD="[Message withheld by the safety filter]";
   /** The host guard's refusal text, or undefined when the text may proceed. */
-  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory"|"preferences",conversationId?:string):Promise<string|undefined>{
+  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory"|"preferences",conversationId?:string,files?:{typed:string;documents:Array<{name:string;text:string}>}):Promise<string|undefined>{
     if(!options.inputGuard)return undefined;
     let result:InputGuardResult;
-    try{result=await options.inputGuard({identity,content,kind,...(conversationId?{conversationId}:{})});}
+    try{result=await options.inputGuard({identity,content,kind,...(conversationId?{conversationId}:{}),...(files?.documents.length?files:{})});}
     catch{throw new ChatbotError("guard_unavailable","The assistant is temporarily unavailable. Please try again shortly.",503);}
     if(!result||result.allow)return undefined;
     return typeof result.reply==="string"&&result.reply.trim()?result.reply:"I can't help with that.";
@@ -272,9 +323,9 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const user=identity.userId;
     const conversation=await store.conversation(instance,user,id);if(!conversation)throw new ChatbotError("not_found","Conversation not found.",404);
     const toolRequest=request.clone();
-    const body=await readJson(request) as {content?:unknown;requestId?:unknown;mediaIds?:unknown};
+    const body=await readJson(request) as {content?:unknown;requestId?:unknown;mediaIds?:unknown;documentIds?:unknown};
     if(typeof body.content!=="string"||!body.content.trim())throw new ChatbotError("invalid_input","A non-empty message is required.");
-    const messageContent=body.content;
+    const typed=body.content;
     if(body.content.length>100_000)throw new ChatbotError("message_too_large","Message exceeds the configured maximum.",413);
     if(body.requestId!==undefined&&(typeof body.requestId!=="string"||body.requestId.length<1||body.requestId.length>200))throw new ChatbotError("invalid_input","requestId must be a string under 200 characters.");
     const requestId=(body.requestId as string|undefined)??crypto.randomUUID();
@@ -283,11 +334,17 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const imageSetting=options.capabilities?.images;
     if(mediaIds.length&&!imageSetting?.enabled)throw new ChatbotError("capability_disabled","Image input is disabled.",403);
     if(mediaIds.length>(imageSetting?.maxCount??4))throw new ChatbotError("invalid_image","Too many images were attached.");
-    for(const mediaId of mediaIds)if(typeof mediaId!=="string"||!await store.mediaForMessage(instance,user,mediaId,id))throw new ChatbotError("invalid_image","One or more images are invalid or unavailable.");
+    for(const mediaId of mediaIds)if(typeof mediaId!=="string"||!(await store.mediaForMessage(instance,user,mediaId,id))?.mime.startsWith("image/"))throw new ChatbotError("invalid_image","One or more images are invalid or unavailable.");
+    const documentSetting=options.capabilities?.documents,documentIds=Array.isArray(body.documentIds)?body.documentIds:[];
+    if(documentIds.length&&!documentSetting?.enabled)throw new ChatbotError("capability_disabled","File input is disabled.",403);
+    if(documentIds.length>(documentSetting?.maxCount??3))throw new ChatbotError("invalid_document","Too many files were attached.");
+    let messageContent=typed;const documents:Array<{name:string;text:string}>=[];
+    for(const documentId of documentIds){const document=typeof documentId==="string"?await store.mediaForMessage(instance,user,documentId,id):undefined;if(document?.mime!=="text/plain"||!document.name)throw new ChatbotError("invalid_document","One or more files are invalid or unavailable.");const text=document.bytes.toString("utf8");documents.push({name:document.name,text});messageContent+=fileBlock(document.name,text);}
+    if(messageContent.length>100_000)throw new ChatbotError("message_too_large","Message exceeds the configured maximum.",413);
     // Parallel timing starts the guard now and checks its verdict right before the model's reply is read.
     let guardVerdict:Promise<{refusal?:string;error?:unknown}>|undefined;
-    if(options.inputGuard&&options.inputGuardTiming==="parallel")guardVerdict=guardInput(identity,messageContent,"message",id).then(refusal=>({refusal}),error=>({error}));
-    else{const refusal=await guardInput(identity,messageContent,"message",id);if(refusal!==undefined)return refusedReply(id,requestId,refusal);}
+    if(options.inputGuard&&options.inputGuardTiming==="parallel")guardVerdict=guardInput(identity,messageContent,"message",id,{typed,documents}).then(refusal=>({refusal}),error=>({error}));
+    else{const refusal=await guardInput(identity,messageContent,"message",id,{typed,documents});if(refusal!==undefined)return refusedReply(id,requestId,refusal);}
     const lock=`${instance}:${user}:${id}`,unlock=await store.tryLock(lock);if(!unlock)throw new ChatbotError("conflict","A reply is already being generated for this conversation.",409);
     if(await store.hasRequest(id,requestId)){await unlock();throw new ChatbotError("duplicate_request","This message request has already been accepted.",409);}
     const priorMessages=(await store.messages(id)).filter(message=>message.status==="complete");
@@ -305,7 +362,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     if(inputAvailable<1){await unlock();throw new ChatbotError("message_too_large","The image token reserve exceeds the configured context budget.",413);}
     const inlineSuggestions=!!(options.capabilities?.suggestions?.enabled&&options.capabilities.suggestions.inline);
     let built:Awaited<ReturnType<typeof buildMessages>>;
-    try{built=await buildMessages(store,instance,user,id,body.content,[options.branding?.personality,options.capabilities?.richResponses?.enabled!==false?richResponseGuide:"",inlineSuggestions?inlineSuggestionGuide(options.capabilities?.suggestions?.count??3):""].filter(Boolean).join("\n\n"),{...limits,inputTokens:inputAvailable});}
+    try{built=await buildMessages(store,instance,user,id,messageContent,[options.branding?.personality,options.capabilities?.richResponses?.enabled!==false?richResponseGuide:"",inlineSuggestions?inlineSuggestionGuide(options.capabilities?.suggestions?.count??3):""].filter(Boolean).join("\n\n"),{...limits,inputTokens:inputAvailable});}
     catch(error){await unlock();if(error instanceof Error&&error.message==="message_too_large")throw new ChatbotError("message_too_large","This message exceeds the configured context budget.",413);throw error;}
     if(deletingUsers.has(ownerKey(user))){await unlock();throw new ChatbotError("conflict","User data is being deleted. Please retry shortly.",409);}
     const estimate=built.estimate+imageReserve;
@@ -314,12 +371,12 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const key=ownerKey(user),userActive=activeByUser.get(key)??new Set();userActive.add({controller:abort,completion:activeCompletion});activeByUser.set(key,userActive);
     const doneActive=()=>{activeControllers.delete(abort);activeCompletions.delete(activeCompletion);for(const item of userActive)if(item.controller===abort){userActive.delete(item);break;}if(!userActive.size)activeByUser.delete(key);finishActive();};
     let assistantId:string,userMessageId:string,answerCompleted=false;
-    try{userMessageId=await store.addMessage(id,"user",body.content+(mediaIds.length?` [${mediaIds.length} image${mediaIds.length===1?"":"s"} attached]`:""),"complete",requestId,mediaIds);assistantId=await store.addMessage(id,"assistant","","pending");}
+    try{userMessageId=await store.addMessage(id,"user",messageContent+(mediaIds.length?` [${mediaIds.length} image${mediaIds.length===1?"":"s"} attached]`:""),"complete",requestId,mediaIds);assistantId=await store.addMessage(id,"assistant","","pending");}
     catch(error){await unlock();doneActive();throw error;}
     request.signal.addEventListener("abort",()=>abort.abort(request.signal.reason),{once:true});
     const timeout=setTimeout(()=>abort.abort(new Error("timeout")),options.provider.timeoutMs??60_000);
     try{
-      const userMessageQueue=[...priorContextMessages.filter(message=>message.role==="user"),{id:"current",role:"user",content:body.content+(mediaIds.length?` [${mediaIds.length} image${mediaIds.length===1?"":"s"} attached]`:""),status:"complete",created_at:new Date().toISOString(),mediaIds}];
+      const userMessageQueue=[...priorContextMessages.filter(message=>message.role==="user"),{id:"current",role:"user",content:messageContent+(mediaIds.length?` [${mediaIds.length} image${mediaIds.length===1?"":"s"} attached]`:""),status:"complete",created_at:new Date().toISOString(),mediaIds}];
       const normalized=(content:string)=>content.replace(/ \[\d+ images? attached\]$/,"" );
       const pendingUsers=[...userMessageQueue];
       const providerMessages:Array<Record<string,unknown>>=[];
@@ -420,7 +477,7 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
             }
             const held=suggestionFilter?.flush();if(held){accumulated+=held;send("delta",{text:held});}
             if(hasUsage)send("usage",{input:usageIn,output:usageOut,...(cachedIn?{cachedInput:cachedIn}:{})});
-            await store.completeMessage(assistantId,accumulated,"complete",usageIn,usageOut);answerCompleted=true;clearTimeout(timeout);await store.addUsage(instance,user,id,built.estimate,hasUsage?usageIn:undefined,hasUsage?usageOut:undefined,"chat",cachedIn||undefined);await emit("usage",user,{inputEstimate:built.estimate,inputActual:hasUsage?usageIn:undefined,outputActual:hasUsage?usageOut:undefined,...(cachedIn?{cachedInput:cachedIn}:{})});
+            await store.completeMessage(assistantId,accumulated,"complete",usageIn,usageOut);answerCompleted=true;if(conversation.title==="New conversation")try{await store.rename(instance,user,id,typed.replace(/\s+/g," ").trim().slice(0,60),true);}catch{/* the default title stays */}clearTimeout(timeout);await store.addUsage(instance,user,id,built.estimate,hasUsage?usageIn:undefined,hasUsage?usageOut:undefined,"chat",cachedIn||undefined);await emit("usage",user,{inputEstimate:built.estimate,inputActual:hasUsage?usageIn:undefined,outputActual:hasUsage?usageOut:undefined,...(cachedIn?{cachedInput:cachedIn}:{})});
             const suggestionSetting=options.capabilities?.suggestions;
             if(suggestionFilter){
               const prompts=suggestionFilter.suggestions(suggestionSetting?.count??3);

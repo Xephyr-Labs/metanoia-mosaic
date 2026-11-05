@@ -2,7 +2,10 @@ export type Awaitable<T> = T | Promise<T>;
 export type Row = { id:string; user_id:string; instance_id:string; title:string; summary?:string|null; summary_message_count?:number; created_at:string; updated_at:string };
 export type StoredMessage = { id:string; role:string; content:string; status:string; created_at:string; suggestions?:string[]; mediaIds?:string[] };
 export type StoredMemory = { id:string; content:string; created_at:string };
-export type StoredMedia = { mime:string; bytes:Buffer };
+export type StoredMedia = { mime:string; bytes:Buffer; name?:string|null };
+/** A file or image the user sent, without its bytes. Documents are stored as their extracted text (text/plain). */
+export type MediaSummary = { id:string; conversation_id:string|null; mime:string; name:string|null; created_at:string };
+export type SharedMessage = { conversation_id:string; role:string; content:string; created_at:string };
 
 export interface Store {
   user(instance:string,user:string,profile?:Record<string,unknown>):Awaitable<Record<string,unknown>>;
@@ -16,6 +19,8 @@ export interface Store {
   hasRequest(id:string,requestId:string):Awaitable<boolean>;
   completeMessage(id:string,content:string,status:string,input?:number,output?:number):Awaitable<void>;
   setSuggestions(id:string,prompts:string[]):Awaitable<void>;
+  /** onlyIfDefault: rename only a chat still called "New conversation" (auto-titles never overwrite a user's name). */
+  rename(instance:string,user:string,id:string,title:string,onlyIfDefault?:boolean):Awaitable<boolean>;
   deleteConversation(instance:string,user:string,id:string):Awaitable<boolean>;
   prefs(instance:string,user:string):Awaitable<Record<string,unknown>>;
   updatePrefs(instance:string,user:string,value:Record<string,unknown>):Awaitable<void>;
@@ -25,8 +30,11 @@ export interface Store {
   deleteMemory(instance:string,user:string,id:string):Awaitable<boolean>;
   addUsage(instance:string,user:string,conversation:string,inputEstimate:number,inputActual:number|undefined,outputActual:number|undefined,kind?:string,cachedInput?:number):Awaitable<void>;
   userData(instance:string,user:string):Awaitable<void>;
-  putMedia(instance:string,user:string,conversation:string|undefined,mime:string,bytes:Buffer):Awaitable<string>;
+  putMedia(instance:string,user:string,conversation:string|undefined,mime:string,bytes:Buffer,name?:string):Awaitable<string>;
   getMedia(instance:string,user:string,id:string):Awaitable<StoredMedia|undefined>;
+  /** The user's newest uploads and messages across conversations, for the Shared view. */
+  mediaList(instance:string,user:string,limit:number):Awaitable<MediaSummary[]>;
+  recentMessages(instance:string,user:string,limit:number):Awaitable<SharedMessage[]>;
   mediaForMessage(instance:string,user:string,id:string,conversation:string):Awaitable<StoredMedia|undefined>;
   tryLock(key:string):Awaitable<(()=>Awaitable<void>)|null>;
   hitRateLimit(instance:string,user:string,limit:number,windowMs:number):Awaitable<boolean>;
