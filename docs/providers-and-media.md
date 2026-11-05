@@ -56,7 +56,7 @@ capabilities: {
 },
 ```
 
-The text is read once, on upload, and stored like an image (owner-only, deleted with the conversation). When the message is sent, each file's text is added to it inside an `<attached-file name="…">` block, so the model sees it on later turns too, and the input guard screens it with the message. The widget shows the block as a file chip. Budget `context.inputTokens` for the text: 20,000 characters is about 5,000 tokens. Upload errors (unsupported type, nothing readable, too large) come back with a message the widget shows as it is.
+The text is read once, on upload, and stored like an image (owner-only, deleted with the conversation). When the message is sent, each file's text is added to it inside an `<attached-file name="…">` block, so the model sees it on later turns too. The input guard gets the whole message as `content`, plus `typed` (what the user wrote) and `documents` (each file's name and text), so it can hold the user's own material to different rules than their request. The widget shows the block as a file chip. Budget `context.inputTokens` for the text: 20,000 characters is about 5,000 tokens. Upload errors (unsupported type, nothing readable, too large) come back with a message the widget shows as it is.
 
 ## Voice
 

@@ -76,7 +76,12 @@ export type ChatbotOptions = {
   onEvent?: (event: ChatbotEvent) => void | Promise<void>;
 };
 
-export type InputGuardContext = { identity: UserIdentity; content: string; kind: "message" | "memory" | "preferences"; conversationId?: string };
+/**
+ * content is the whole message, attached files included. When files are attached, typed is what the
+ * user wrote and documents is each file's text, for guards that screen a user's own material
+ * differently from their request.
+ */
+export type InputGuardContext = { identity: UserIdentity; content: string; kind: "message" | "memory" | "preferences"; conversationId?: string; typed?: string; documents?: Array<{ name: string; text: string }> };
 export type InputGuardResult = { allow: true } | { allow: false; reply: string };
 export type InputGuard = (context: InputGuardContext) => InputGuardResult | Promise<InputGuardResult>;
 

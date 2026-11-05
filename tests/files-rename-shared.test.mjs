@@ -38,6 +38,22 @@ test('an attached PDF is read by the host extractor, reaches the model, and is l
  }finally{await f.close();}
 });
 
+test('the input guard gets the whole message plus the typed text and each file apart',async()=>{
+ const dir=await mkdtemp(`${tmpdir()}/chat-files-guard-`),seen=[];
+ globalThis.fetch=async()=>streamReply('ok');
+ const bot=createChatbot({provider:{baseUrl:'https://mock.test/v1/',apiKey:'test',model:'test'},identity:()=>({userId:'u'}),storage:{filename:`${dir}/db.sqlite`},capabilities:{documents:{enabled:true}},inputGuard:ctx=>{seen.push(ctx);return {allow:true};}});
+ try{
+  await bot.ready;const call=(path,init={})=>bot.handle(new Request(`http://app.test${path}`,init));
+  const id=(await(await call('/conversations',{method:'POST'})).json()).conversation.id;
+  const form=new FormData();form.append('conversationId',id);form.append('file',new File(['My CV text'],'cv.txt',{type:'text/plain'}));
+  const doc=await(await call('/media',{method:'POST',body:form})).json();
+  await(await call(`/conversations/${id}/messages`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({content:'Review it',documentIds:[doc.mediaId]})})).text();
+  assert.equal(seen[0].typed,'Review it');
+  assert.deepEqual(seen[0].documents,[{name:'cv.txt',text:'My CV text'}]);
+  assert.match(seen[0].content,/^Review it\n\n<attached-file name="cv.txt">\nMy CV text\n<\/attached-file>$/);
+ }finally{await bot.close();globalThis.fetch=originalFetch;await rm(dir,{recursive:true,force:true});}
+});
+
 test('without an extractor only text files are read; other types and empty text are refused',async()=>{
  const f=await fixture({capabilities:{documents:{enabled:true}}});
  try{

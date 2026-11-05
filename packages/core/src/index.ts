@@ -298,10 +298,10 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
   }
   const WITHHELD="[Message withheld by the safety filter]";
   /** The host guard's refusal text, or undefined when the text may proceed. */
-  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory"|"preferences",conversationId?:string):Promise<string|undefined>{
+  async function guardInput(identity:UserIdentity,content:string,kind:"message"|"memory"|"preferences",conversationId?:string,files?:{typed:string;documents:Array<{name:string;text:string}>}):Promise<string|undefined>{
     if(!options.inputGuard)return undefined;
     let result:InputGuardResult;
-    try{result=await options.inputGuard({identity,content,kind,...(conversationId?{conversationId}:{})});}
+    try{result=await options.inputGuard({identity,content,kind,...(conversationId?{conversationId}:{}),...(files?.documents.length?files:{})});}
     catch{throw new ChatbotError("guard_unavailable","The assistant is temporarily unavailable. Please try again shortly.",503);}
     if(!result||result.allow)return undefined;
     return typeof result.reply==="string"&&result.reply.trim()?result.reply:"I can't help with that.";
@@ -334,13 +334,13 @@ export function createChatbot(options: ChatbotOptions): Chatbot {
     const documentSetting=options.capabilities?.documents,documentIds=Array.isArray(body.documentIds)?body.documentIds:[];
     if(documentIds.length&&!documentSetting?.enabled)throw new ChatbotError("capability_disabled","File input is disabled.",403);
     if(documentIds.length>(documentSetting?.maxCount??3))throw new ChatbotError("invalid_document","Too many files were attached.");
-    let messageContent=typed;
-    for(const documentId of documentIds){const document=typeof documentId==="string"?await store.mediaForMessage(instance,user,documentId,id):undefined;if(document?.mime!=="text/plain"||!document.name)throw new ChatbotError("invalid_document","One or more files are invalid or unavailable.");messageContent+=fileBlock(document.name,document.bytes.toString("utf8"));}
+    let messageContent=typed;const documents:Array<{name:string;text:string}>=[];
+    for(const documentId of documentIds){const document=typeof documentId==="string"?await store.mediaForMessage(instance,user,documentId,id):undefined;if(document?.mime!=="text/plain"||!document.name)throw new ChatbotError("invalid_document","One or more files are invalid or unavailable.");const text=document.bytes.toString("utf8");documents.push({name:document.name,text});messageContent+=fileBlock(document.name,text);}
     if(messageContent.length>100_000)throw new ChatbotError("message_too_large","Message exceeds the configured maximum.",413);
     // Parallel timing starts the guard now and checks its verdict right before the model's reply is read.
     let guardVerdict:Promise<{refusal?:string;error?:unknown}>|undefined;
-    if(options.inputGuard&&options.inputGuardTiming==="parallel")guardVerdict=guardInput(identity,messageContent,"message",id).then(refusal=>({refusal}),error=>({error}));
-    else{const refusal=await guardInput(identity,messageContent,"message",id);if(refusal!==undefined)return refusedReply(id,requestId,refusal);}
+    if(options.inputGuard&&options.inputGuardTiming==="parallel")guardVerdict=guardInput(identity,messageContent,"message",id,{typed,documents}).then(refusal=>({refusal}),error=>({error}));
+    else{const refusal=await guardInput(identity,messageContent,"message",id,{typed,documents});if(refusal!==undefined)return refusedReply(id,requestId,refusal);}
     const lock=`${instance}:${user}:${id}`,unlock=await store.tryLock(lock);if(!unlock)throw new ChatbotError("conflict","A reply is already being generated for this conversation.",409);
     if(await store.hasRequest(id,requestId)){await unlock();throw new ChatbotError("duplicate_request","This message request has already been accepted.",409);}
     const priorMessages=(await store.messages(id)).filter(message=>message.status==="complete");
