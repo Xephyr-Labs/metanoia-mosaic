@@ -1,5 +1,11 @@
 # @metanoia/widget
 
+## 0.6.0
+
+### Minor Changes
+
+- feb27a7: Add `cards` and `actions` rich blocks. A button either sends its label as the user message with an opaque `tap` value in the request body (tools read it from `ctx.request`), or hands an action to the host page through the new `onAction` option. The widget instance gains `send(text)`; the React component exposes `send`, `open` and `close` through a `ref`. Any button can be marked `primary` for the one main action. The rich response guide describes both blocks.
+
 ## 0.5.0
 
 No changes in this release.
