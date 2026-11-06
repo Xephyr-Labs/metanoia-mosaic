@@ -1,4 +1,6 @@
 import { renderChoices } from "./choices.js";
+import { renderActions } from "./actions.js";
+import { renderCards } from "./cards.js";
 import { renderChart } from "./chart.js";
 import { deferred, load, mk, pending, type RenderContext, type RichOptions } from "./util.js";
 
@@ -8,7 +10,7 @@ type Mermaid={initialize(config:Record<string,unknown>):void;render(id:string,so
 let diagrams=0;
 type Katex={renderToString(tex:string,options:Record<string,unknown>):string};
 // Fence tag -> the `rich` flag that enables it.
-export const flags:Record<string,keyof RichOptions>={math:"math",chart:"charts",choices:"choices",svg:"svg",mermaid:"diagrams"};
+export const flags:Record<string,keyof RichOptions>={math:"math",chart:"charts",choices:"choices",actions:"actions",cards:"cards",svg:"svg",mermaid:"diagrams"};
 
 export function renderBlock(lang:string,source:string,closed:boolean,ctx:RenderContext):Node{
  const flag=Object.hasOwn(flags,lang)?flags[lang]!:undefined,kind=flag&&ctx.rich[flag]!==false?lang:"";
@@ -16,6 +18,8 @@ export function renderBlock(lang:string,source:string,closed:boolean,ctx:RenderC
  try{
   if(kind==="chart")return renderChart(source);
   if(kind==="choices")return renderChoices(source,ctx);
+  if(kind==="actions")return renderActions(source,ctx);
+  if(kind==="cards")return renderCards(source,ctx);
   if(kind==="math")return math(source,true,ctx);
   if(kind==="svg")return svgImage(source,ctx.label("illustration"),"illustration");
   if(kind==="mermaid")return mermaid(source,ctx);

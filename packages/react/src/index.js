@@ -1,11 +1,17 @@
-import { createElement, useEffect, useRef } from "react";
+import { createElement, forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { mount } from "@metanoialabs/widget";
 
-export function OmniChatbot(props) {
+export const OmniChatbot = forwardRef(function OmniChatbot(props, ref) {
   const host = useRef(null);
   const widget = useRef(null);
   const previousOptions = useRef(null);
   const { className, style, ...options } = props;
+  // A ref gives the host page send(text) (post a message as the user, e.g. after a step the host ran), open() and close().
+  useImperativeHandle(ref, () => ({
+    send: text => widget.current?.send(text) ?? false,
+    open: () => widget.current?.open(),
+    close: () => widget.current?.close()
+  }), []);
   useEffect(() => {
     if (!host.current) return undefined;
     const instance = mount(host.current, options);
@@ -25,4 +31,4 @@ export function OmniChatbot(props) {
     previousOptions.current = options;
   });
   return createElement("div", { ref: host, className, style });
-}
+});
