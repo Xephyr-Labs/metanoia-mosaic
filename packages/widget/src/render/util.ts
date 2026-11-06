@@ -1,6 +1,10 @@
-export type RichOptions={tables?:boolean;charts?:boolean;choices?:boolean;diagrams?:boolean;math?:boolean;svg?:boolean;images?:boolean;mermaidUrl?:string;katexUrl?:string};
+export type RichOptions={tables?:boolean;charts?:boolean;choices?:boolean;cards?:boolean;actions?:boolean;diagrams?:boolean;math?:boolean;svg?:boolean;images?:boolean;mermaidUrl?:string;katexUrl?:string};
 export type RichLabel="copyCode"|"copied"|"renderFailed"|"rendering"|"sendChoices"|"illustration"|"diagram";
-export type RenderContext={rich:RichOptions;streaming:boolean;interactive:boolean;dark:boolean;send:(text:string)=>boolean;label:(key:RichLabel)=>string};
+export type RenderContext={rich:RichOptions;streaming:boolean;interactive:boolean;dark:boolean;send:(text:string)=>boolean;label:(key:RichLabel)=>string;
+ /** Sends `label` as the user's message with `value` as its tap: an opaque string the host's server reads from the request body. */
+ tap:(label:string,value:string)=>boolean;
+ /** Hands an action to the host page (WidgetOptions.onAction); nothing is sent to the conversation. */
+ host:(action:string,params:Record<string,unknown>)=>void};
 
 export const mk=(tag:string,cls?:string)=>{const node=document.createElement(tag);if(cls)node.className=cls;return node;};
 export function pending(ctx:RenderContext){const node=mk("div","render-pending");node.textContent=ctx.label("rendering");return node;}
