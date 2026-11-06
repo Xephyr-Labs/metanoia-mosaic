@@ -16,7 +16,7 @@ function setup({history}={}){
   if(url.endsWith('/config'))return Response.json(config);
   if(url.endsWith('/conversations'))return Response.json({conversation:{id:'chat'},conversations:[{id:'chat',title:'Chat'}]});
   if(url.endsWith('/conversations/chat'))return Response.json({messages:history??[]});
-  if(url.endsWith('/messages')){bodies.push(JSON.parse(init.body));return stream(replies.shift()??'ok');}
+  if(url.endsWith('/messages')){bodies.push(JSON.parse(init.body));const r=replies.shift()??'ok';return r==='fail'?new Response('down',{status:503}):stream(r);}
   return Response.json({});};
  const host=document.createElement('div');document.body.append(host);return host;
 }
@@ -121,5 +121,16 @@ test('a button marked primary stands out; others do not, and primary must be tru
  try{await widget.ready;await say(host,fence('actions',[{label:'Go',value:'v1',primary:true},{label:'Back',value:'v2'},{label:'Odd',value:'v3',primary:'yes'}]));
   const [go,back,odd]=[...last(host).querySelectorAll('.actions button')];
   assert.ok(go.classList.contains('primary'));assert.ok(!back.classList.contains('primary'));assert.ok(!odd.classList.contains('primary'));
+ }finally{widget.destroy();}
+});
+
+test('Retry after a failed send keeps the tap of the button that was pressed',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,fence('actions',[{label:'Go',value:'opaque-9'}]));
+  replies.push('fail');last(host).querySelector('.actions button').click();await settle();
+  assert.equal(bodies.at(-1).tap,'opaque-9');
+  const retry=[...host.shadowRoot.querySelectorAll('.failed-note button')].at(-1);assert.ok(retry,'a Retry button');
+  retry.click();await settle();
+  assert.equal(bodies.at(-1).content,'Go');assert.equal(bodies.at(-1).tap,'opaque-9');
  }finally{widget.destroy();}
 });
