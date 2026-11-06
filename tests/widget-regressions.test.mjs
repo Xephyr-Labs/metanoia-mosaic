@@ -138,3 +138,9 @@ test('React: onAction reaches the widget and a ref exposes send',async()=>{const
  try{await act(async()=>root.render(React.createElement(OmniChatbot,{endpoint:'/api',ref,onAction:()=>{}})));await act(async()=>{await tick();await tick();});
   assert.equal(typeof ref.current?.send,'function');assert.equal(ref.current.send('from host'),true);await act(async()=>{await tick();await tick();});assert.ok(posted>=1);
  }finally{await act(async()=>root.unmount());}});
+test('React: a ref opens and closes the panel',async()=>{const target=setup();const root=createRoot(target);const ref=React.createRef();
+ try{await act(async()=>root.render(React.createElement(OmniChatbot,{endpoint:'/api',ref})));await act(async()=>{await tick();await tick();});
+  const panel=()=>target.firstElementChild.shadowRoot.querySelector('.panel');
+  await act(async()=>{ref.current.open();await tick();});assert.ok(!panel().classList.contains('hidden'));
+  await act(async()=>{ref.current.close();await tick();});assert.ok(panel().classList.contains('hidden'));
+ }finally{await act(async()=>root.unmount());}});
