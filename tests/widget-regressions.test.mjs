@@ -134,3 +134,7 @@ test("on a phone, tapping a link in a reply closes the sheet so the page it open
   assert.ok(host.shadowRoot.querySelector(".panel").classList.contains("hidden"));
  }finally{widget.destroy();globalThis.matchMedia=media;}
 });
+test('React: onAction reaches the widget and a ref exposes send',async()=>{const target=setup();const root=createRoot(target);const ref=React.createRef();
+ try{await act(async()=>root.render(React.createElement(OmniChatbot,{endpoint:'/api',ref,onAction:()=>{}})));await act(async()=>{await tick();await tick();});
+  assert.equal(typeof ref.current?.send,'function');assert.equal(ref.current.send('from host'),true);await act(async()=>{await tick();await tick();});assert.ok(posted>=1);
+ }finally{await act(async()=>root.unmount());}});

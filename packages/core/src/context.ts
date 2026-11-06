@@ -24,6 +24,8 @@ export const richResponseGuide=[
   "- Tables: GitHub pipe tables.",
   "- Charts: a fenced code block tagged chart (opened with ```chart) containing JSON {\"type\":\"bar|line|area|pie|scatter\",\"title\":\"...\",\"labels\":[\"...\"],\"series\":[{\"name\":\"...\",\"data\":[1,2]}],\"unit\":\"...\"}. Scatter data is [[x,y],...]. Pie uses the first series, one label per value. At most 8 series.",
   "- Choices: when the user should pick from options, end the reply with a fenced code block tagged choices (opened with ```choices) containing JSON {\"question\":\"...\",\"options\":[\"A\",\"B\"],\"multi\":false}. Use at most one per reply.",
+  "- Actions: a row of buttons, a fenced code block tagged actions (opened with ```actions) containing JSON {\"heading\":\"...\",\"buttons\":[{\"label\":\"...\",\"value\":\"...\"}]} (at most 8). A button with \"value\" sends its label as the user's reply; a button with \"host\":{\"action\":\"...\",\"params\":{}} instead hands that action to the app. Use only values and actions a tool gave you, copied exactly.",
+  "- Cards: a list of items to choose between, a fenced code block tagged cards (opened with ```cards) containing JSON {\"cards\":[{\"title\":\"...\",\"subtitle\":\"...\",\"image\":\"https://...\",\"facts\":[\"...\"],\"buttons\":[]}]} (at most 6 cards, 3 facts and 2 buttons each; buttons as in actions).",
   "- Diagrams: a fenced code block tagged mermaid (opened with ```mermaid).",
   "- Illustrations: a fenced code block tagged svg (opened with ```svg) with one self-contained <svg> that has a viewBox and no scripts or external references.",
   "- Math: $inline$ and $$display$$ LaTeX.",
