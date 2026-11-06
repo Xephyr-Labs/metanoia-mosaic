@@ -150,6 +150,8 @@ button:disabled{opacity:.6;cursor:wait}
 .chart .swatch{width:9px;height:9px;border-radius:3px;background:var(--c)}
 .msg.rich .choices{margin-top:.75em}
 .msg.rich .actions{margin-top:.75em}
+.msg.rich .choice.primary{background:var(--omni-accent);border-color:var(--omni-accent);color:var(--omni-on-accent,#fff);font-weight:650}
+.msg.rich .choice.primary:hover:not(:disabled){background:color-mix(in srgb,var(--omni-accent) 88%,#000)}
 .msg.rich .actions-heading{font-weight:650;margin-bottom:6px}
 .msg.rich .cards{display:grid;gap:8px;margin-top:.75em}
 .msg.rich .card{display:flex;gap:10px;padding:10px;border:1px solid var(--omni-field-border);border-radius:12px;background:var(--omni-bg)}

@@ -115,3 +115,11 @@ test('the rich flags can turn cards and actions off',async()=>{
  try{await widget.ready;await say(host,fence('actions',[{label:'A',value:'v'}]));assert.equal(last(host).querySelector('.actions'),null);assert.ok(last(host).querySelector('.code-block'));
  }finally{widget.destroy();}
 });
+
+test('a button marked primary stands out; others do not, and primary must be true',async()=>{
+ const host=setup();const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;await say(host,fence('actions',[{label:'Go',value:'v1',primary:true},{label:'Back',value:'v2'},{label:'Odd',value:'v3',primary:'yes'}]));
+  const [go,back,odd]=[...last(host).querySelectorAll('.actions button')];
+  assert.ok(go.classList.contains('primary'));assert.ok(!back.classList.contains('primary'));assert.ok(!odd.classList.contains('primary'));
+ }finally{widget.destroy();}
+});
