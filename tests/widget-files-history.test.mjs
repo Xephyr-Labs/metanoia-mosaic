@@ -88,3 +88,19 @@ test('Shared sorts links into host groups, lists files, and opens the chat a fil
   assert.ok(root.querySelector('.compose'));
  }finally{widget.destroy();}
 });
+
+const drag=(el,type,files)=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{types:['Files'],files,dropEffect:'none'}});el.dispatchEvent(e);return e;};
+
+test('files dropped on the open chat are attached like picked ones; types it cannot read are left out',async()=>{
+ const {host}=setup();const widget=mount(host,{endpoint:'/api'});
+ try{
+  await widget.ready;const root=host.shadowRoot;widget.open();const panel=root.querySelector('section');
+  assert.equal(drag(panel,'dragenter',[]).defaultPrevented,true);
+  assert.ok(panel.classList.contains('dropping'));
+  assert.equal(drag(panel,'dragover',[]).defaultPrevented,true);
+  drag(panel,'drop',[new File(['%PDF'],'cv.pdf',{type:'application/pdf'}),new File(['x'],'notes.txt',{type:''}),new File(['MZ'],'tool.exe',{type:'application/x-msdownload'})]);
+  assert.ok(!panel.classList.contains('dropping'));
+  assert.deepEqual([...root.querySelectorAll('.attachments .chip span:not(.kind)')].map(n=>n.textContent),['cv.pdf','notes.txt']);
+  assert.match(root.querySelector('.status').textContent,/tool\.exe/);
+ }finally{widget.destroy();}
+});
