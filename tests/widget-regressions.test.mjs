@@ -144,3 +144,12 @@ test('React: a ref opens and closes the panel',async()=>{const target=setup();co
   await act(async()=>{ref.current.open();await tick();});assert.ok(!panel().classList.contains('hidden'));
   await act(async()=>{ref.current.close();await tick();});assert.ok(panel().classList.contains('hidden'));
  }finally{await act(async()=>root.unmount());}});
+test('streaming follows the bottom only while the reader is there',async()=>{const host=setup({pending:true});const widget=mount(host,{endpoint:'/api'});
+ try{await widget.ready;const list=host.shadowRoot.querySelector('.messages');let top=0;
+  Object.defineProperty(list,'scrollHeight',{configurable:true,get:()=>1000});Object.defineProperty(list,'clientHeight',{configurable:true,get:()=>200});Object.defineProperty(list,'scrollTop',{configurable:true,get:()=>top,set:v=>{top=v;}});
+  const chunk=text=>{streamController.enqueue(new TextEncoder().encode(`event: delta\ndata: {"text":"${text}"}\n\n`));return tick();};
+  send(host);await tick();assert.equal(top,1000,'sending jumps to the bottom');
+  top=300;await chunk('one');assert.equal(top,300,'scrolled up: a chunk leaves the view alone');
+  top=770;await chunk('two');assert.equal(top,1000,'within 40px of the bottom: a chunk follows');
+  streamController.close();await tick();
+ }finally{widget.destroy();}});
