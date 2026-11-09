@@ -104,3 +104,17 @@ test('files dropped on the open chat are attached like picked ones; types it can
   assert.match(root.querySelector('.status').textContent,/tool\.exe/);
  }finally{widget.destroy();}
 });
+
+test('inline: the chat fills its host, always open, with no launcher and nothing to close',async()=>{
+ const {host}=setup();const widget=mount(host,{endpoint:'/api',inline:true});
+ try{
+  await widget.ready;const root=host.shadowRoot,panel=root.querySelector('section');
+  assert.equal(root.querySelector('.launcher'),null);
+  assert.ok(panel.classList.contains('inline'));assert.ok(!panel.classList.contains('hidden'));
+  assert.notEqual(panel.getAttribute('role'),'dialog');
+  assert.equal(root.querySelector('header button[aria-label="Close chat"]'),null);
+  panel.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));widget.close();
+  assert.ok(!panel.classList.contains('hidden'));
+  assert.ok(root.querySelector('form textarea'));
+ }finally{widget.destroy();}
+});
