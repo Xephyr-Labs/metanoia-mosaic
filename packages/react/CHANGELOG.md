@@ -1,5 +1,17 @@
 # @metanoia/react
 
+## 0.7.0
+
+### Minor Changes
+
+- 6867264: `inline: true` renders the chat inside the host element, always open: no launcher, no close button, no floating panel, and the host sets the size. For a page that is itself the chat, such as an inbox's assistant conversation.
+
+### Patch Changes
+
+- Updated dependencies [c7b0c5e]
+- Updated dependencies [6867264]
+  - @metanoialabs/widget@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
